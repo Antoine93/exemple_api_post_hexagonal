@@ -339,3 +339,6 @@ Pour aller plus loin avec cet exemple:
 
 **Date:** 23-10-2025
 **Version:** 1.0
+=======
+# exemple_api_post_hexagonal
+>>>>>>> 3bad4a89e8e7af485d3f67ae079cbe6271bad3b1

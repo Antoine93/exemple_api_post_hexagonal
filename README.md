@@ -352,6 +352,59 @@ curl -X GET "http://localhost:8000/api/projects/1"
 - **Responsabilité:** Configurer et démarrer FastAPI
 - **Configuration:** Enregistrement des routers
 
+## SQLAlchemy : ORM Multi-Base de Données
+
+### Pourquoi SQLAlchemy ?
+
+**SQLAlchemy** est un ORM (Object-Relational Mapping) qui fait le pont entre Python et SQL.
+
+**Avantage clé : Multi-base de données**
+- Un seul code Python
+- Compatible avec SQLite, MySQL, PostgreSQL, Oracle, etc.
+- Changez de BDD en modifiant simplement `DATABASE_URL`
+
+### Configuration actuelle
+
+**Par défaut : SQLite** (aucune installation requise)
+```python
+DATABASE_URL = "sqlite:///./project_db.sqlite"
+```
+
+**Passer à MySQL :**
+```bash
+# Dans le fichier .env
+DATABASE_URL=mysql+pymysql://user:password@localhost:3306/project_db
+```
+
+**Passer à PostgreSQL :**
+```bash
+# Dans le fichier .env
+DATABASE_URL=postgresql://user:password@localhost:5432/project_db
+```
+
+### Architecture & SQLAlchemy
+
+```
+┌─────────────────────────────┐
+│  DOMAINE                    │
+│  class Project              │  ← Entité métier pure (Python pur)
+│    - days_remaining()       │
+└─────────────────────────────┘
+            ↕ (conversion)
+┌─────────────────────────────┐
+│  ADAPTER (SQLAlchemy)       │
+│  class ProjectModel(Base)   │  ← Modèle technique (table SQL)
+│  class SQLAlchemyRepository │  ← Convertit Project ↔ ProjectModel
+└─────────────────────────────┘
+            ↕
+┌─────────────────────────────┐
+│  BASE DE DONNÉES            │
+│  SQLite / MySQL / Postgres  │  ← SQLAlchemy traduit en SQL
+└─────────────────────────────┘
+```
+
+**Le domaine ne sait pas quelle BDD est utilisée !** C'est l'essence de l'architecture hexagonale.
+
 ## Avantages de Cette Architecture
 
 ### ✅ Isolation du Domaine

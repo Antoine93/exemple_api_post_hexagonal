@@ -5,7 +5,7 @@ Le domaine dépend de CETTE INTERFACE, pas de l'implémentation.
 """
 from abc import ABC, abstractmethod
 from typing import Optional, List
-from domain.entities.project import Project
+from src.domain.entities.project import Project
 
 
 class ProjectRepositoryPort(ABC):

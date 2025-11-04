@@ -4,7 +4,7 @@ Définit le CONTRAT que le domaine expose vers l'extérieur.
 Les adapters primaires dépendent de CETTE INTERFACE.
 """
 from abc import ABC, abstractmethod
-from domain.entities.project import Project
+from src.domain.entities.project import Project
 
 
 class ProjectUseCasesPort(ABC):

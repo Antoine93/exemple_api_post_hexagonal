@@ -3,8 +3,8 @@ Service du domaine: contient la LOGIQUE MÉTIER.
 Orchestre les entités et utilise les ports secondaires.
 NE DÉPEND PAS des adapters, uniquement des INTERFACES (ports).
 """
-from domain.entities.project import Project
-from ports.secondary.project_repository import ProjectRepositoryPort
+from src.domain.entities.project import Project
+from src.ports.secondary.project_repository import ProjectRepositoryPort
 
 
 class ProjectService:

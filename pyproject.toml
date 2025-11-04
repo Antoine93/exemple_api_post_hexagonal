@@ -11,7 +11,7 @@ license = { text = "MIT" }
 
 dependencies = [
     "fastapi>=0.104.1",
-    "uvicorn[standard]>=0.24.0",
+    "hypercorn>=0.16.0",
     "pydantic>=2.5.0",
     "sqlalchemy>=2.0.23",
     "pymysql>=1.1.0",
@@ -37,8 +37,8 @@ test = [
 ]
 
 [project.scripts]
-start = "uvicorn src.main:app --reload --host 0.0.0.0 --port 8000"
-dev = "uvicorn src.main:app --reload --host 0.0.0.0 --port 8000"
+start = "hypercorn src.main:app --reload --bind 0.0.0.0:8000"
+dev = "hypercorn src.main:app --reload --bind 0.0.0.0:8000"
 
 [build-system]
 requires = ["hatchling"]
@@ -107,7 +107,7 @@ strict_equality = true
 
 [[tool.mypy.overrides]]
 module = [
-    "uvicorn.*",
+    "hypercorn.*",
     "sqlalchemy.*",
     "pymysql.*",
 ]

@@ -12,6 +12,10 @@ ENV/
 .venv/
 .env/
 
+# uv
+.python-version
+uv.lock
+
 # Distribution / packaging
 build/
 develop-eggs/

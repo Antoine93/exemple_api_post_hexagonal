@@ -33,7 +33,9 @@ exemple_post/
 │   ├── di_container.py                # 💉 Injection de dépendances
 │   └── main.py                        # 🚀 Point d'entrée
 │
-└── requirements.txt                   # Dépendances Python
+├── pyproject.toml                     # Configuration du projet et dépendances
+├── uv.lock                            # Fichier de verrouillage des versions (généré)
+└── .venv/                             # Environnement virtuel (généré)
 ```
 
 ## Principe de l'Architecture Hexagonale
@@ -75,20 +77,35 @@ exemple_post/
 
 - Python 3.10+
 - MySQL 8.0+
+- [uv](https://docs.astral.sh/uv/) - Gestionnaire de paquets Python ultra-rapide
+
+### Installer uv
+
+```bash
+# Windows (PowerShell)
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
 ### Étapes d'installation
 
-1. **Créer un environnement virtuel:**
+1. **Synchroniser les dépendances:**
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # Sur Windows: venv\Scripts\activate
+uv sync
 ```
 
-2. **Installer les dépendances:**
+Cette commande va automatiquement :
+- Créer un environnement virtuel `.venv`
+- Installer toutes les dépendances du projet
+- Verrouiller les versions dans `uv.lock`
+
+2. **Installer aussi les dépendances de développement:**
 
 ```bash
-pip install -r requirements.txt
+uv sync --all-extras
 ```
 
 3. **Configurer la base de données:**
@@ -107,19 +124,20 @@ CREATE DATABASE project_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 ## Démarrage de l'Application
 
-### Lancer le serveur FastAPI
+### Lancer le serveur FastAPI avec Hypercorn
 
 ```bash
-cd src
-python main.py
+# Méthode recommandée : utiliser uv run
+uv run hypercorn src.main:app --reload --bind 0.0.0.0:8000
 ```
 
-Ou avec uvicorn directement:
+Pas besoin d'activer manuellement l'environnement virtuel ! `uv run` s'en charge automatiquement.
 
-```bash
-cd src
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
+**Pourquoi Hypercorn ?**
+- Support HTTP/2 et HTTP/3
+- Compatible ASGI (comme Uvicorn)
+- Meilleure gestion des connexions WebSocket
+- Support de plusieurs workers
 
 L'API sera accessible sur: `http://localhost:8000`
 
@@ -335,10 +353,66 @@ Pour aller plus loin avec cet exemple:
 - **SQLAlchemy:** https://www.sqlalchemy.org/
 - **Pydantic:** https://docs.pydantic.dev/
 
+## Gestion des Dépendances avec uv
+
+### Ajouter une nouvelle dépendance
+
+```bash
+# Ajouter une dépendance de production
+uv add requests
+
+# Ajouter une dépendance de développement
+uv add --dev pytest-mock
+
+# Ajouter une dépendance optionnelle dans un groupe
+uv add --optional dev black
+```
+
+### Mettre à jour les dépendances
+
+```bash
+# Mettre à jour toutes les dépendances
+uv lock --upgrade
+
+# Mettre à jour une dépendance spécifique
+uv lock --upgrade-package fastapi
+```
+
+### Supprimer une dépendance
+
+```bash
+uv remove nom-du-package
+```
+
+### Exécuter des commandes sans activer le venv
+
+```bash
+# Lancer le serveur
+uv run hypercorn src.main:app --reload --bind 0.0.0.0:8000
+
+# Exécuter Python
+uv run python script.py
+
+# Exécuter pytest
+uv run pytest
+
+# Exécuter black
+uv run black src/
+
+# Exécuter ruff
+uv run ruff check src/
+```
+
+### Utiliser des outils one-off avec uvx
+
+```bash
+# Exécuter un outil sans l'installer dans le projet
+uvx ruff check .
+uvx black --check .
+uvx mypy src/
+```
+
 ---
 
 **Date:** 23-10-2025
-**Version:** 1.0
-=======
-# exemple_api_post_hexagonal
->>>>>>> 3bad4a89e8e7af485d3f67ae079cbe6271bad3b1
+**Version:** 2.0 - Migration vers uv

@@ -1,15 +1,16 @@
 """
-Adapter secondaire: implémentation concrète du repository avec MySQL.
+Adapter secondaire: implémentation concrète du repository avec SQLAlchemy.
 IMPLÉMENTE le port secondaire (ProjectRepositoryPort).
 Contient le code technique d'accès aux données.
+Compatible avec SQLite, MySQL, PostgreSQL, etc. grâce à SQLAlchemy.
 """
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy import Column, Integer, String, Float, Date, Text
 from sqlalchemy.ext.declarative import declarative_base
 
-from domain.entities.project import Project
-from ports.secondary.project_repository import ProjectRepositoryPort
+from src.domain.entities.project import Project
+from src.ports.secondary.project_repository import ProjectRepositoryPort
 
 
 # Modèle SQLAlchemy (ORM) - couche technique
@@ -35,12 +36,14 @@ class ProjectModel(Base):
     manager_id = Column(Integer, nullable=False)
 
 
-class MySQLProjectRepository(ProjectRepositoryPort):
+class SQLAlchemyProjectRepository(ProjectRepositoryPort):
     """
-    Implémentation MySQL du repository de projets.
+    Implémentation SQLAlchemy du repository de projets.
 
     Cette classe contient UNIQUEMENT du code technique d'accès aux données.
     Aucune logique métier ici.
+
+    Compatible avec: SQLite, MySQL, PostgreSQL, Oracle, etc.
     """
 
     def __init__(self, db_session: Session):

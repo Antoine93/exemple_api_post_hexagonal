@@ -16,6 +16,7 @@ dependencies = [
     "sqlalchemy>=2.0.23",
     "pymysql>=1.1.0",
     "python-dotenv>=1.0.0",
+    "httpx>=0.28.1",
 ]
 
 [project.optional-dependencies]
@@ -36,9 +37,6 @@ test = [
     "httpx>=0.25.0",
 ]
 
-[project.scripts]
-start = "hypercorn src.main:app --reload --bind 0.0.0.0:8000"
-dev = "hypercorn src.main:app --reload --bind 0.0.0.0:8000"
 
 [build-system]
 requires = ["hatchling"]

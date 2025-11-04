@@ -28,7 +28,7 @@ exemple_post/
 │   │   │           └── project_schemas.py  # DTOs Pydantic
 │   │   └── secondary/
 │   │       └── repositories/
-│   │           └── mysql_project_repository.py  # Implémentation MySQL
+│   │           └── sqlalchemy_project_repository.py  # Implémentation SQLAlchemy
 │   │
 │   ├── di_container.py                # 💉 Injection de dépendances
 │   └── main.py                        # 🚀 Point d'entrée
@@ -108,19 +108,33 @@ Cette commande va automatiquement :
 uv sync --all-extras
 ```
 
-3. **Configurer la base de données:**
+3. **Configuration de la base de données (optionnel):**
 
-Modifier la variable `DATABASE_URL` dans `src/di_container.py`:
+Par défaut, le projet utilise **SQLite** (aucune configuration nécessaire).
 
-```python
-DATABASE_URL = "mysql+pymysql://user:password@localhost:3306/project_db"
-```
+**Pour utiliser SQLite (par défaut) :**
+Rien à faire ! Un fichier `project_db.sqlite` sera créé automatiquement au démarrage.
 
-4. **Créer la base de données:**
+**Pour utiliser MySQL :**
+1. Créer un fichier `.env` à la racine du projet (copier `.env.example`)
+2. Définir la variable `DATABASE_URL` :
+   ```bash
+   DATABASE_URL=mysql+pymysql://user:password@localhost:3306/project_db
+   ```
+3. Créer la base de données MySQL :
+   ```sql
+   CREATE DATABASE project_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
 
-```sql
-CREATE DATABASE project_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
+**Pour utiliser PostgreSQL :**
+1. Dans le fichier `.env` :
+   ```bash
+   DATABASE_URL=postgresql://user:password@localhost:5432/project_db
+   ```
+2. Ajouter la dépendance :
+   ```bash
+   uv add psycopg2-binary
+   ```
 
 ## Démarrage de l'Application
 
@@ -143,10 +157,67 @@ L'API sera accessible sur: `http://localhost:8000`
 
 ### Documentation API
 
+FastAPI génère **automatiquement** une documentation interactive pour votre API. Vous n'avez rien à configurer !
+
 - **Swagger UI:** http://localhost:8000/docs
+  - Interface interactive pour tester vos endpoints
+  - Permet d'exécuter des requêtes directement depuis le navigateur
+  - Générée automatiquement à partir de vos routes et schémas Pydantic
+
 - **ReDoc:** http://localhost:8000/redoc
+  - Documentation alternative avec un design épuré
+  - Idéale pour lire et comprendre l'API
+
+- **OpenAPI Schema:** http://localhost:8000/openapi.json
+  - Schéma OpenAPI brut au format JSON
+  - Utilisable avec des outils tiers (Postman, Insomnia, etc.)
+
+#### Comment ça fonctionne ?
+
+Dans `src/main.py`, la simple déclaration de l'application FastAPI active ces endpoints :
+
+```python
+app = FastAPI(
+    title="Project Management API",
+    description="API de gestion de projets avec architecture hexagonale",
+    version="1.0.0"
+)
+```
+
+**Aucune configuration supplémentaire nécessaire !** FastAPI analyse automatiquement :
+- Vos routes (decorators `@router.post`, `@router.get`, etc.)
+- Vos schémas Pydantic (`CreateProjectRequest`, `ProjectResponse`)
+- Vos types de retour et paramètres
+- Votre documentation dans les docstrings
+
+#### Désactiver la documentation (production)
+
+Si vous souhaitez désactiver ces endpoints en production :
+
+```python
+app = FastAPI(
+    title="Project Management API",
+    docs_url=None,      # Désactive /docs
+    redoc_url=None,     # Désactive /redoc
+    openapi_url=None    # Désactive /openapi.json
+)
+```
 
 ## Utilisation de l'API
+
+### Scripts de test rapide
+
+Deux scripts sont fournis pour tester rapidement l'API :
+
+**1. Script automatique (3 projets d'exemple) :**
+```bash
+uv run python create_project.py
+```
+
+**2. Script interactif (vous saisissez les données) :**
+```bash
+uv run python create_project_interactive.py
+```
 
 ### POST /api/projects - Créer un projet
 
@@ -251,11 +322,12 @@ curl -X GET "http://localhost:8000/api/projects/1"
 - **Type:** Interface abstraite (ABC)
 - **Implémenté par:** ProjectService
 
-### 5. Adapter Secondaire (adapters/secondary/repositories/mysql_project_repository.py)
+### 5. Adapter Secondaire (adapters/secondary/repositories/sqlalchemy_project_repository.py)
 
-- **Responsabilité:** Implémenter l'accès aux données MySQL
+- **Responsabilité:** Implémenter l'accès aux données avec SQLAlchemy
 - **Dépendances:** SQLAlchemy, port secondaire
 - **Conversion:** ProjectModel (ORM) ↔ Project (entité)
+- **Compatible avec:** SQLite, MySQL, PostgreSQL, Oracle, etc.
 
 ### 6. Schemas Pydantic (adapters/primary/fastapi/schemas/project_schemas.py)
 
@@ -292,9 +364,10 @@ Le domaine est complètement isolé de l'infrastructure:
 ### ✅ Flexibilité
 
 Changements faciles sans toucher au domaine:
-- Remplacer MySQL par PostgreSQL, MongoDB, etc.
+- Changer de base de données (SQLite → MySQL → PostgreSQL) en modifiant simplement DATABASE_URL
 - Remplacer FastAPI par GraphQL, CLI, etc.
 - Changer les DTOs sans affecter le métier
+- Utiliser MongoDB en créant un nouvel adapter qui implémente ProjectRepositoryPort
 
 ### ✅ Testabilité
 

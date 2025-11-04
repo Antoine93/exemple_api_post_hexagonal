@@ -6,11 +6,11 @@ Dépend du PORT PRIMAIRE (interface), pas directement du service.
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Annotated
 
-from adapters.primary.fastapi.schemas.project_schemas import (
+from src.adapters.primary.fastapi.schemas.project_schemas import (
     CreateProjectRequest,
     ProjectResponse
 )
-from ports.primary.project_use_cases import ProjectUseCasesPort
+from src.ports.primary.project_use_cases import ProjectUseCasesPort
 
 
 # Création du router FastAPI
@@ -27,7 +27,7 @@ def get_project_use_cases() -> ProjectUseCasesPort:
     IMPORTANT: Cette fonction sera remplacée par le DI container.
     C'est ici que l'injection de dépendances se produit.
     """
-    from di_container import get_project_service
+    from src.di_container import get_project_service
     return get_project_service()
 
 

@@ -3,7 +3,7 @@ Point d'entrée de l'application FastAPI.
 Configure et démarre le serveur.
 """
 from fastapi import FastAPI
-from adapters.primary.fastapi.routers import projects_router
+from src.adapters.primary.fastapi.routers import projects_router
 
 
 # Création de l'application FastAPI
@@ -25,5 +25,9 @@ def root():
 
 # Point d'entrée pour démarrer le serveur
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import hypercorn.run
+    from hypercorn.config import Config
+
+    config = Config()
+    config.bind = ["0.0.0.0:8000"]
+    hypercorn.run.run(config)

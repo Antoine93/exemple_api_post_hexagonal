@@ -65,7 +65,7 @@ exemple_post/
 └─────────────────────────────────────────────┘
                       ↓
 ┌─────────────────────────────────────────────┐
-│         ADAPTERS SECONDAIRES (MySQL)        │
+│   ADAPTERS SECONDAIRES (SQLAlchemy/BDD)    │
 └─────────────────────────────────────────────┘
 ```
 
@@ -75,9 +75,10 @@ exemple_post/
 
 ### Prérequis
 
-- Python 3.10+
-- MySQL 8.0+
-- [uv](https://docs.astral.sh/uv/) - Gestionnaire de paquets Python ultra-rapide
+- **Python 3.10+** (requis)
+- **[uv](https://docs.astral.sh/uv/)** - Gestionnaire de paquets Python ultra-rapide (requis)
+- **SQLite** - Inclus avec Python, aucune installation nécessaire ✅
+- **MySQL/PostgreSQL** - Optionnel, seulement si vous souhaitez l'utiliser à la place de SQLite
 
 ### Installer uv
 

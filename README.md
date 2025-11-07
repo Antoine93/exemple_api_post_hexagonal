@@ -204,6 +204,84 @@ app = FastAPI(
 )
 ```
 
+## Tests
+
+### Exécuter les tests
+
+Le projet dispose d'une suite de tests complète avec **89 tests** et **87% de couverture**:
+
+```bash
+# Exécuter tous les tests
+uv run pytest tests/ -v
+
+# Exécuter les tests avec rapport de couverture
+uv run pytest tests/ --cov=src --cov-report=term-missing
+
+# Exécuter les tests avec génération du rapport HTML
+uv run pytest tests/ --cov=src --cov-report=html
+
+# Exécuter uniquement les tests unitaires
+uv run pytest tests/unit/ -v
+
+# Exécuter uniquement les tests d'intégration
+uv run pytest tests/integration/ -v
+
+# Exécuter uniquement les tests E2E
+uv run pytest tests/e2e/ -v
+
+# Vérifier la couverture minimale (80%)
+uv run pytest tests/ --cov=src --cov-fail-under=80
+```
+
+### Suite de Tests
+
+**89 tests répartis en:**
+
+- **Domaine (20 tests):**
+  - 7 tests de validation d'entité
+  - 6 tests de logique métier
+  - 7 tests d'exceptions personnalisées
+
+- **Service (8 tests):**
+  - Tests des cas d'usage (create, get, update, delete, list)
+  - Tests de validation métier
+
+- **Repository (10 tests):**
+  - Tests d'intégration avec SQLite
+  - Tests de persistence, recherche et suppression
+
+- **API E2E (21 tests):**
+  - Tests de tous les endpoints CRUD
+  - Tests de pagination
+  - Tests de gestion d'erreurs
+  - Tests de documentation API
+
+- **Infrastructure (30 tests):**
+  - Tests de setup et fixtures
+  - Tests du DI container
+  - Tests de type checking (mypy strict)
+
+### Vérification du Type Checking
+
+```bash
+# Vérifier les types avec mypy strict
+uv run mypy src/ --strict
+
+# Vérifier le linting avec ruff
+uv run ruff check src/
+
+# Vérifier le formatage avec black
+uv run black src/ --check
+```
+
+### Métriques de Qualité
+
+- **Tests:** 89 passing
+- **Couverture:** 87%
+- **Type Safety:** mypy --strict (0 errors)
+- **Architecture:** Hexagonale (Ports & Adapters)
+- **Zéro dépendance:** Le domaine est 100% pur Python
+
 ## Utilisation de l'API
 
 ### Scripts de test rapide
@@ -279,6 +357,97 @@ curl -X GET "http://localhost:8000/api/projects/1"
   "days_remaining": 252
 }
 ```
+
+### GET /api/projects - Lister les projets (avec pagination)
+
+**Requête:**
+
+```bash
+# Lister tous les projets (par défaut: 20 premiers)
+curl -X GET "http://localhost:8000/api/projects"
+
+# Avec pagination personnalisée
+curl -X GET "http://localhost:8000/api/projects?offset=10&limit=5"
+```
+
+**Paramètres:**
+- `offset` (optionnel): Nombre de projets à ignorer (défaut: 0)
+- `limit` (optionnel): Nombre maximum de projets à retourner (défaut: 20, max: 100)
+
+**Réponse (200 OK):**
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Projet Alpha",
+    "description": "Description du projet Alpha",
+    "start_date": "2025-01-01",
+    "end_date": "2025-12-31",
+    "budget": 100000.5,
+    "comment": "Commentaire optionnel",
+    "manager_id": 1,
+    "is_active": true,
+    "days_remaining": 252
+  },
+  {
+    "id": 2,
+    "name": "Projet Beta",
+    "description": "Description du projet Beta",
+    "start_date": "2025-02-01",
+    "end_date": "2025-11-30",
+    "budget": 50000.0,
+    "comment": null,
+    "manager_id": 2,
+    "is_active": false,
+    "days_remaining": 0
+  }
+]
+```
+
+### PUT /api/projects/{project_id} - Mettre à jour un projet
+
+**Requête:**
+
+```bash
+curl -X PUT "http://localhost:8000/api/projects/1" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Projet Alpha - Modifié",
+    "budget": 150000.0
+  }'
+```
+
+**Note:** Tous les champs sont optionnels. Seuls les champs fournis seront mis à jour.
+
+**Réponse (200 OK):**
+
+```json
+{
+  "id": 1,
+  "name": "Projet Alpha - Modifié",
+  "description": "Description du projet Alpha",
+  "start_date": "2025-01-01",
+  "end_date": "2025-12-31",
+  "budget": 150000.0,
+  "comment": "Commentaire optionnel",
+  "manager_id": 1,
+  "is_active": true,
+  "days_remaining": 252
+}
+```
+
+### DELETE /api/projects/{project_id} - Supprimer un projet
+
+**Requête:**
+
+```bash
+curl -X DELETE "http://localhost:8000/api/projects/1"
+```
+
+**Réponse (204 No Content):**
+
+Pas de contenu retourné en cas de succès.
 
 ## Règles Métier Implémentées
 
@@ -447,30 +616,44 @@ Séparation claire des responsabilités:
 4. **Pas de conversion DTO → Entité:** Ne jamais passer un DTO Pydantic au domaine
 5. **Validation uniquement dans DTO:** Dupliquer les validations métier dans l'entité
 
+## Fonctionnalités Implémentées
+
+- **CRUD Complet:** Create, Read, Update, Delete, List avec pagination
+- **Tests Complets:** 89 tests (87% de couverture)
+- **Type Safety:** mypy --strict sans erreurs
+- **Architecture Hexagonale:** Isolation complète du domaine
+- **Multi-Database:** Support SQLite, MySQL, PostgreSQL via SQLAlchemy
+- **Exceptions Personnalisées:** Gestion d'erreurs métier claire
+- **Documentation API:** Swagger UI et ReDoc générés automatiquement
+- **CI/CD:** Pipeline GitHub Actions configuré
+
 ## Prochaines Étapes
 
 Pour aller plus loin avec cet exemple:
 
-1. **Ajouter des tests:**
-   - Tests unitaires du domaine
-   - Tests d'intégration des adapters
-   - Tests E2E de l'API
-
-2. **Ajouter d'autres endpoints:**
-   - PUT /api/projects/{id} (mise à jour)
-   - DELETE /api/projects/{id} (suppression)
-   - GET /api/projects (liste paginée)
-
-3. **Améliorer le DI Container:**
+1. **Améliorer le DI Container:**
    - Utiliser dependency-injector
-   - Gérer le cycle de vie des sessions DB
    - Ajouter des scopes (singleton, request, etc.)
+   - Meilleure gestion du cycle de vie
 
-4. **Ajouter des fonctionnalités:**
-   - Authentification et autorisation
-   - Logging structuré
-   - Gestion d'erreurs avancée
+2. **Ajouter des fonctionnalités:**
+   - Authentification et autorisation (JWT)
+   - Logging structuré (structlog)
+   - Gestion d'erreurs avancée (middleware)
    - Migrations avec Alembic
+   - Validation avancée avec validateurs personnalisés
+
+3. **Performance:**
+   - Caching avec Redis
+   - Compression des réponses
+   - Rate limiting
+   - Pagination curseur pour grandes listes
+
+4. **Observabilité:**
+   - Métriques (Prometheus)
+   - Tracing distribué (OpenTelemetry)
+   - Health checks
+   - Monitoring des performances
 
 ## Références
 

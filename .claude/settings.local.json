@@ -2,7 +2,19 @@
   "permissions": {
     "allow": [
       "Bash(dir:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(NUL)",
+      "Bash(tree:*)",
+      "Bash(cat:*)",
+      "Bash(mkdir:*)",
+      "Bash(python:*)",
+      "Bash(uv run python:*)",
+      "Bash(findstr:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(uv sync:*)",
+      "Bash(uv run:*)",
+      "Bash(if not exist documents mkdir documents)",
+      "Bash(/dev/null)"
     ],
     "deny": [],
     "ask": []

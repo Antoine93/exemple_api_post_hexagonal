@@ -26,11 +26,11 @@ class Project:
     comment: Optional[str]
     manager_id: int
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validation des règles métier de l'entité."""
         self._validate()
 
-    def _validate(self):
+    def _validate(self) -> None:
         """Valide les règles métier de base."""
         if not self.name or self.name.strip() == "":
             raise ValueError("Le nom du projet ne peut pas être vide")

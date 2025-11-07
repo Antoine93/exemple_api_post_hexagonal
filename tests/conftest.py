@@ -5,12 +5,15 @@ This file contains reusable fixtures for:
 - Database testing (in-memory SQLite)
 - Mock repositories
 - Test data factories
+- E2E testing with isolated databases
 """
 import pytest
 from datetime import date, timedelta
 from unittest.mock import Mock
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
+from fastapi.testclient import TestClient
+from typing import Generator
 
 from src.domain.entities.project import Project
 from src.ports.secondary.project_repository import ProjectRepositoryPort
@@ -243,3 +246,143 @@ def create_project_in_db(db_session):
         return project_model
 
     return _create_project
+
+
+# ============================================================================
+# E2E TESTING FIXTURES (Isolated Database)
+# ============================================================================
+
+
+@pytest.fixture(scope="function")
+def isolated_db_engine():
+    """
+    Create an isolated in-memory database engine for E2E tests.
+
+    This ensures complete isolation between E2E tests by creating
+    a fresh database for each test function.
+
+    Scope: function - New database per test for complete isolation
+
+    Returns:
+        SQLAlchemy Engine with isolated in-memory database
+    """
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        echo=False,
+    )
+
+    # Create all tables in the isolated database
+    Base.metadata.create_all(bind=engine)
+
+    yield engine
+
+    # Cleanup
+    Base.metadata.drop_all(bind=engine)
+    engine.dispose()
+
+
+@pytest.fixture(scope="function")
+def isolated_db_session(isolated_db_engine) -> Generator[Session, None, None]:
+    """
+    Create an isolated database session for E2E tests.
+
+    This session is connected to an isolated in-memory database,
+    ensuring no cross-contamination between tests.
+
+    Args:
+        isolated_db_engine: The isolated database engine
+
+    Yields:
+        SQLAlchemy Session connected to isolated database
+    """
+    connection = isolated_db_engine.connect()
+    transaction = connection.begin()
+
+    SessionLocal = sessionmaker(bind=connection)
+    session = SessionLocal()
+
+    yield session
+
+    # Cleanup
+    session.close()
+    transaction.rollback()
+    connection.close()
+
+
+@pytest.fixture(scope="function")
+def client(isolated_db_session) -> TestClient:
+    """
+    Create a FastAPI TestClient with isolated database for E2E tests.
+
+    This fixture:
+    1. Creates a fresh isolated database for the test
+    2. Patches the DI container to use the isolated DB
+    3. Provides a TestClient for making HTTP requests
+    4. Automatically cleans up after the test
+
+    IMPORTANT: This fixture ensures E2E tests are completely isolated
+    from each other and don't share database state.
+
+    Args:
+        isolated_db_session: The isolated database session
+
+    Returns:
+        TestClient: FastAPI test client with isolated database
+
+    Example:
+        def test_create_project(client):
+            response = client.post("/api/projects", json={...})
+            assert response.status_code == 201
+    """
+    from unittest.mock import patch
+    from src.main import app
+
+    # We need to patch the get_db_session function in di_container
+    # to return our isolated session instead of creating a new one
+    def override_get_db_session() -> Generator[Session, None, None]:
+        """Override function that returns the isolated test session."""
+        try:
+            yield isolated_db_session
+        finally:
+            pass  # Cleanup is handled by the isolated_db_session fixture
+
+    # Patch the DI container's get_db_session function
+    with patch('src.di_container.get_db_session', override_get_db_session):
+        # Create the test client with the patched dependency
+        test_client = TestClient(app)
+
+        yield test_client
+
+
+# ============================================================================
+# PYTEST CONFIGURATION
+# ============================================================================
+
+
+def pytest_configure(config):
+    """
+    Configure pytest with custom markers.
+
+    This allows categorizing tests:
+    - unit: Unit tests (fast, no external dependencies)
+    - integration: Integration tests (with database)
+    - e2e: End-to-end tests (full API tests)
+    - flaky: Tests that are known to be flaky
+    - slow: Tests that take longer to run
+    """
+    config.addinivalue_line(
+        "markers", "unit: marks tests as unit tests (fast, isolated)"
+    )
+    config.addinivalue_line(
+        "markers", "integration: marks tests as integration tests (with database)"
+    )
+    config.addinivalue_line(
+        "markers", "e2e: marks tests as end-to-end tests (full stack)"
+    )
+    config.addinivalue_line(
+        "markers", "flaky: marks tests as flaky (may fail intermittently)"
+    )
+    config.addinivalue_line(
+        "markers", "slow: marks tests as slow (take more than 1 second)"
+    )

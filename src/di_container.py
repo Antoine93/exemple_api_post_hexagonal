@@ -15,11 +15,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
 from src.domain.services.project_service import ProjectService
+from src.domain.services.user_service import UserService
 from src.adapters.secondary.repositories.sqlalchemy_project_repository import (
     SQLAlchemyProjectRepository,
     Base
 )
+from src.adapters.secondary.repositories.sqlalchemy_user_repository import (
+    SQLAlchemyUserRepository,
+    UtilisateurModel
+)
 from src.ports.primary.project_use_cases import ProjectUseCasesPort
+from src.ports.primary.user_use_cases import UserUseCasesPort
 
 # Charger les variables d'environnement depuis .env
 load_dotenv()

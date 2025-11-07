@@ -1,0 +1,200 @@
+@startuml Domain_Entities
+!define ENTITY class
+
+title Diagramme de classes - Entités du domaine
+
+' Énumérations
+enum StatutTache {
+    ACTIF
+    EN_ATTENTE
+    EN_RETARD
+    TERMINE
+}
+
+enum RoleUtilisateur {
+    ADMINISTRATEUR
+    GESTIONNAIRE
+    EMPLOYE
+}
+
+enum TypeProjet {
+    INTERNE
+    EXTERNE
+    MAINTENANCE
+    DEVELOPPEMENT
+}
+
+' Entités principales
+ENTITY Utilisateur {
+    - id: int
+    - nom: string
+    - prenom: string
+    - email: string
+    - motDePasse: string (SHA-256)
+    - role: RoleUtilisateur
+    - dateCreation: datetime
+    - actif: boolean
+    --
+    + authentifier(): boolean
+    + changerMotDePasse(nouveauMdp: string): void
+    + verifierPermission(permission: string): boolean
+}
+
+ENTITY Projet {
+    - id: int
+    - numero: string
+    - nom: string
+    - description: string
+    - dateDebut: date
+    - dateEcheance: date
+    - type: TypeProjet
+    - stade: string
+    - commentaire: string
+    - heuresPlanifiees: float
+    - heuresReelles: float
+    - estTemplate: boolean
+    - projetTemplateId: int
+    --
+    + creerTache(tache: Tache): void
+    + dupliquer(): Projet
+    + sauvegarderCommeTemplate(): void
+    + calculerAvancement(): float
+    + calculerEcartTemps(): float
+}
+
+ENTITY Tache {
+    - id: int
+    - numero: string
+    - nom: string
+    - description: string
+    - dateDebut: date
+    - dateEcheance: date
+    - heuresPlanifiees: float
+    - heuresReelles: float
+    - statut: StatutTache
+    - profondeur: int
+    - projetId: int
+    - tacheParentId: int
+    --
+    + ajouterSousTache(tache: Tache): void
+    + cloturer(): void
+    + calculerHeuresReelles(): float
+    + verifierRetard(): boolean
+}
+
+ENTITY FeuilleTemps {
+    - id: int
+    - employeId: int
+    - semaine: int
+    - annee: int
+    - dateCreation: datetime
+    - validePar: int
+    - approuvePar: int
+    - estVerrouillee: boolean
+    - dateValidation: datetime
+    - dateApprobation: datetime
+    --
+    + valider(): boolean
+    + approuver(gestionnaireId: int): boolean
+    + verrouiller(): void
+    + calculerHeuresTotal(): float
+}
+
+ENTITY SaisieTemps {
+    - id: int
+    - feuilleTempsId: int
+    - tacheId: int
+    - employeId: int
+    - date: date
+    - heureDebut: time
+    - heureFin: time
+    - duree: float (en tranches de 0.5h)
+    - description: string
+    --
+    + validerDuree(): boolean
+    + calculerDuree(): float
+}
+
+ENTITY Entreprise {
+    - id: int
+    - nom: string
+    - adresse: string
+    - telephone: string
+    - email: string
+    --
+}
+
+ENTITY Contact {
+    - id: int
+    - entrepriseId: int
+    - nom: string
+    - prenom: string
+    - fonction: string
+    - email: string
+    - telephone: string
+    --
+}
+
+ENTITY Ressource {
+    - id: int
+    - nom: string
+    - type: string
+    - description: string
+    - disponible: boolean
+    --
+}
+
+ENTITY AssignationRessource {
+    - id: int
+    - ressourceId: int
+    - tacheId: int
+    - dateAssignation: date
+    - pourcentageAllocation: float
+    --
+}
+
+ENTITY LogAudit {
+    - id: int
+    - utilisateurId: int
+    - action: string
+    - entite: string
+    - entiteId: int
+    - dateAction: datetime
+    - detailsJson: string
+    --
+}
+
+' Relations
+Projet "1" --> "0..*" Tache : contient
+Tache "1" --> "0..*" Tache : sous-tâches
+Utilisateur "1" --> "0..*" Projet : responsable
+Projet "0..*" --> "0..*" Utilisateur : participants
+Projet "0..*" --> "1" Entreprise : appartient
+Projet "0..*" --> "1" Contact : contact principal
+Tache "1" --> "0..*" SaisieTemps : enregistrements
+Utilisateur "1" --> "0..*" SaisieTemps : effectue
+FeuilleTemps "1" --> "0..*" SaisieTemps : contient
+Utilisateur "1" --> "0..*" FeuilleTemps : possède
+Tache "0..*" --> "0..*" Ressource : via AssignationRessource
+AssignationRessource "0..*" --> "1" Tache
+AssignationRessource "0..*" --> "1" Ressource
+Contact "0..*" --> "1" Entreprise
+Utilisateur "1" --> "0..*" LogAudit : génère
+
+' Notes
+note right of Projet
+  Template: Un projet peut servir
+  de modèle pour créer d'autres projets
+end note
+
+note right of Tache
+  Profondeur illimitée pour
+  les sous-tâches
+end note
+
+note right of SaisieTemps
+  Durée par tranche de 30 minutes
+  (0.5, 1.0, 1.5, 2.0, etc.)
+end note
+
+@enduml

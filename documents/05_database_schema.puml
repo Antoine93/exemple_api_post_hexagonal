@@ -1,0 +1,188 @@
+@startuml Database_Schema
+!define TABLE entity
+
+title Schéma de Base de Données - MySQL
+
+' Tables principales
+TABLE utilisateurs {
+    * id : INT <<PK>>
+    --
+    nom : VARCHAR(100)
+    prenom : VARCHAR(100)
+    email : VARCHAR(255) <<UNIQUE>>
+    mot_de_passe_hash : VARCHAR(255)
+    role : ENUM('ADMINISTRATEUR', 'GESTIONNAIRE', 'EMPLOYE')
+    date_creation : DATETIME
+    actif : BOOLEAN
+}
+
+TABLE entreprises {
+    * id : INT <<PK>>
+    --
+    nom : VARCHAR(255)
+    adresse : TEXT
+    telephone : VARCHAR(50)
+    email : VARCHAR(255)
+}
+
+TABLE contacts {
+    * id : INT <<PK>>
+    --
+    entreprise_id : INT <<FK>>
+    nom : VARCHAR(100)
+    prenom : VARCHAR(100)
+    fonction : VARCHAR(100)
+    email : VARCHAR(255)
+    telephone : VARCHAR(50)
+}
+
+TABLE projets {
+    * id : INT <<PK>>
+    --
+    numero : VARCHAR(50) <<UNIQUE>>
+    nom : VARCHAR(255)
+    description : TEXT
+    date_debut : DATE
+    date_echeance : DATE
+    type : ENUM('INTERNE', 'EXTERNE', 'MAINTENANCE', 'DEVELOPPEMENT')
+    stade : VARCHAR(100)
+    commentaire : TEXT
+    heures_planifiees : DECIMAL(10,2)
+    heures_reelles : DECIMAL(10,2)
+    est_template : BOOLEAN
+    projet_template_id : INT <<FK>>
+    responsable_id : INT <<FK>>
+    entreprise_id : INT <<FK>>
+    contact_id : INT <<FK>>
+    date_creation : DATETIME
+}
+
+TABLE taches {
+    * id : INT <<PK>>
+    --
+    numero : VARCHAR(50)
+    nom : VARCHAR(255)
+    description : TEXT
+    date_debut : DATE
+    date_echeance : DATE
+    heures_planifiees : DECIMAL(10,2)
+    heures_reelles : DECIMAL(10,2)
+    statut : ENUM('ACTIF', 'EN_ATTENTE', 'EN_RETARD', 'TERMINE')
+    profondeur : INT
+    projet_id : INT <<FK>>
+    tache_parent_id : INT <<FK>>
+    date_creation : DATETIME
+}
+
+TABLE feuilles_temps {
+    * id : INT <<PK>>
+    --
+    employe_id : INT <<FK>>
+    semaine : INT
+    annee : INT
+    date_creation : DATETIME
+    valide_par : INT <<FK>>
+    approuve_par : INT <<FK>>
+    est_verrouillee : BOOLEAN
+    date_validation : DATETIME
+    date_approbation : DATETIME
+}
+
+TABLE saisies_temps {
+    * id : INT <<PK>>
+    --
+    feuille_temps_id : INT <<FK>>
+    tache_id : INT <<FK>>
+    employe_id : INT <<FK>>
+    date : DATE
+    heure_debut : TIME
+    heure_fin : TIME
+    duree : DECIMAL(4,2)
+    description : TEXT
+    date_creation : DATETIME
+}
+
+TABLE ressources {
+    * id : INT <<PK>>
+    --
+    nom : VARCHAR(255)
+    type : VARCHAR(100)
+    description : TEXT
+    disponible : BOOLEAN
+}
+
+TABLE assignations_ressources {
+    * id : INT <<PK>>
+    --
+    ressource_id : INT <<FK>>
+    tache_id : INT <<FK>>
+    date_assignation : DATETIME
+    pourcentage_allocation : DECIMAL(5,2)
+}
+
+TABLE projets_participants {
+    * id : INT <<PK>>
+    --
+    projet_id : INT <<FK>>
+    utilisateur_id : INT <<FK>>
+    date_assignation : DATETIME
+}
+
+TABLE logs_audit {
+    * id : INT <<PK>>
+    --
+    utilisateur_id : INT <<FK>>
+    action : VARCHAR(255)
+    entite : VARCHAR(100)
+    entite_id : INT
+    date_action : DATETIME
+    details_json : TEXT
+    adresse_ip : VARCHAR(50)
+}
+
+' Relations
+utilisateurs ||--o{ projets : "responsable_id"
+entreprises ||--o{ projets : "entreprise_id"
+contacts }o--|| entreprises : "entreprise_id"
+projets ||--o{ contacts : "contact_id"
+projets ||--o{ projets : "projet_template_id"
+projets ||--o{ taches : "projet_id"
+taches ||--o{ taches : "tache_parent_id"
+utilisateurs ||--o{ feuilles_temps : "employe_id"
+feuilles_temps ||--o{ saisies_temps : "feuille_temps_id"
+taches ||--o{ saisies_temps : "tache_id"
+utilisateurs ||--o{ saisies_temps : "employe_id"
+ressources ||--o{ assignations_ressources : "ressource_id"
+taches ||--o{ assignations_ressources : "tache_id"
+projets ||--o{ projets_participants : "projet_id"
+utilisateurs ||--o{ projets_participants : "utilisateur_id"
+utilisateurs ||--o{ logs_audit : "utilisateur_id"
+
+' Notes et contraintes
+note right of feuilles_temps
+  UNIQUE(employe_id, annee, semaine)
+  Garantit une seule feuille par semaine
+end note
+
+note right of saisies_temps
+  duree doit être un multiple de 0.5
+  (tranches de 30 minutes)
+end note
+
+note right of taches
+  profondeur permet de gérer
+  l'arborescence illimitée
+end note
+
+note right of projets
+  est_template = TRUE pour les modèles
+  projet_template_id référence le template source
+end note
+
+note bottom of logs_audit
+  Table d'audit pour tracer toutes
+  les actions des utilisateurs
+  details_json contient les changements
+end note
+
+@enduml

@@ -4,7 +4,7 @@ Schemas Pydantic pour Utilisateur.
 Ces DTOs (Data Transfer Objects) définissent la structure
 des requêtes/réponses HTTP. Ils appartiennent à la couche adapter.
 """
-from pydantic import BaseModel, Field, EmailStr, field_validator
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from typing import Optional
 
@@ -29,9 +29,10 @@ class CreateUserRequest(BaseModel):
         max_length=100,
         description="Prénom de l'utilisateur"
     )
-    email: EmailStr = Field(
+    email: str = Field(
         ...,
-        description="Adresse email (unique)"
+        description="Adresse email (unique)",
+        pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     )
     mot_de_passe: str = Field(
         ...,
@@ -63,7 +64,10 @@ class UpdateUserRequest(BaseModel):
     """
     nom: Optional[str] = Field(None, min_length=1, max_length=100)
     prenom: Optional[str] = Field(None, min_length=1, max_length=100)
-    email: Optional[EmailStr] = None
+    email: Optional[str] = Field(
+        None,
+        pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    )
 
 
 class ChangePasswordRequest(BaseModel):

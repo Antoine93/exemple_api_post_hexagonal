@@ -5,7 +5,7 @@ Ce service contient la logique métier complexe et orchestre
 les interactions entre entités et repositories.
 """
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from src.domain.entities.user import Utilisateur, RoleUtilisateur
 from src.domain.exceptions import (
@@ -145,9 +145,9 @@ class UserService(UserUseCasesPort):
     def modifier_utilisateur(
         self,
         user_id: int,
-        nom: str = None,
-        prenom: str = None,
-        email: str = None
+        nom: Optional[str] = None,
+        prenom: Optional[str] = None,
+        email: Optional[str] = None
     ) -> Utilisateur:
         """
         Cas d'usage: Modifier les informations d'un utilisateur.

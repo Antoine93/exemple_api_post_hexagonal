@@ -5,7 +5,7 @@ Ce port définit le CONTRAT que le domaine expose vers l'extérieur.
 Les adapters primaires (API, CLI) dépendent de cette interface.
 """
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 from src.domain.entities.user import Utilisateur, RoleUtilisateur
 
 
@@ -83,9 +83,9 @@ class UserUseCasesPort(ABC):
     def modifier_utilisateur(
         self,
         user_id: int,
-        nom: str = None,
-        prenom: str = None,
-        email: str = None
+        nom: Optional[str] = None,
+        prenom: Optional[str] = None,
+        email: Optional[str] = None
     ) -> Utilisateur:
         """
         Modifie les informations d'un utilisateur.

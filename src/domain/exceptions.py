@@ -44,3 +44,15 @@ class ProjectNotFoundError(DomainError):
         """
         self.project_id = project_id
         super().__init__(f"Le projet avec l'ID {project_id} n'existe pas")
+
+
+class EntityAlreadyExistsError(DomainError):
+    """Exception raised when attempting to create an entity that already exists."""
+
+    pass
+
+
+class EntityNotFoundError(DomainError):
+    """Exception raised when a requested entity does not exist."""
+
+    pass

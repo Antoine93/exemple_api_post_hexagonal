@@ -46,12 +46,32 @@ class ProjectRepositoryPort(ABC):
         pass
 
     @abstractmethod
-    def find_all(self) -> List[Project]:
+    def find_all(self, offset: int = 0, limit: int = 20) -> List[Project]:
         """
-        Récupère tous les projets.
+        Récupère tous les projets avec pagination.
+
+        Args:
+            offset: Nombre de projets à ignorer (pour la pagination)
+            limit: Nombre maximum de projets à retourner
 
         Returns:
-            Liste de tous les projets
+            Liste de projets (peut être vide)
+        """
+        pass
+
+    @abstractmethod
+    def update(self, project: Project) -> Project:
+        """
+        Met à jour un projet existant.
+
+        Args:
+            project: L'entité Project avec les nouvelles valeurs
+
+        Returns:
+            Le projet mis à jour
+
+        Raises:
+            RepositoryError: Si la mise à jour échoue
         """
         pass
 

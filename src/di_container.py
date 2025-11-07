@@ -9,6 +9,7 @@ C'est ici que:
 IMPORTANT: Seul ce fichier connaît les implémentations concrètes.
 """
 import os
+from typing import Generator
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -31,7 +32,7 @@ DATABASE_URL = os.getenv(
     "sqlite:///./project_db.sqlite"  # Valeur par défaut: SQLite
 )
 
-print(f"📊 Utilisation de la base de données: {DATABASE_URL.split('://')[0].upper()}")
+print(f"[DATABASE] Using: {DATABASE_URL.split('://')[0].upper()}")
 
 # Configuration spécifique pour SQLite
 engine_kwargs = {}
@@ -51,17 +52,39 @@ SessionLocal = sessionmaker(bind=engine)
 
 # Création des tables (en production, utiliser Alembic pour les migrations)
 Base.metadata.create_all(bind=engine)
-print("✅ Tables de base de données créées/vérifiées")
+print("[DATABASE] Tables created/verified successfully")
 
 
-def get_db_session() -> Session:
+def get_db_session() -> Generator[Session, None, None]:
     """
     Factory pour créer une session de base de données.
 
-    Returns:
-        Session SQLAlchemy
+    CRITICAL: Uses generator pattern with yield to ensure proper cleanup.
+    This prevents memory leaks by guaranteeing the session is closed after use.
+
+    The generator pattern works with FastAPI's Depends() to automatically:
+    1. Create a session before the request
+    2. Yield it to the request handler
+    3. Close it after the request (even if exceptions occur)
+
+    Usage with FastAPI:
+        @app.get("/projects")
+        def get_projects(db: Session = Depends(get_db_session)):
+            # db session is automatically managed
+            return db.query(Project).all()
+
+    Yields:
+        Session: SQLAlchemy session that will be automatically closed
     """
-    return SessionLocal()
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        # CRITICAL: Always close the session, even if an exception occurred
+        # rollback() ensures any uncommitted changes are discarded
+        # close() returns the connection to the pool
+        session.rollback()
+        session.close()
 
 
 def get_project_repository() -> SQLAlchemyProjectRepository:
@@ -72,10 +95,16 @@ def get_project_repository() -> SQLAlchemyProjectRepository:
     SQLAlchemy supporte: SQLite, MySQL, PostgreSQL, Oracle, etc.
     Pour changer de BDD: modifier DATABASE_URL dans .env
 
+    NOTE: This function is used for CLI scripts and testing.
+    For FastAPI endpoints, use get_db_session() directly with Depends()
+    to ensure proper session management per request.
+
     Returns:
         Implémentation concrète du ProjectRepositoryPort
     """
-    db_session = get_db_session()
+    # For CLI/scripts: get the next value from the generator
+    # This is acceptable because CLI scripts are short-lived
+    db_session = next(get_db_session())
     return SQLAlchemyProjectRepository(db_session)
 
 

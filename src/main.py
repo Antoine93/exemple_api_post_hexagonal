@@ -18,7 +18,7 @@ app.include_router(projects_router.router)
 
 
 @app.get("/")
-def root():
+def root() -> dict[str, str]:
     """Endpoint racine pour vérifier que l'API fonctionne."""
     return {"message": "API de gestion de projets - Architecture Hexagonale"}
 

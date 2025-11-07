@@ -1,0 +1,206 @@
+@startuml Services_Layer
+!define SERVICE class
+
+title Diagramme de classes - Couche Services
+
+' Interfaces des repositories (Ports)
+interface IProjectRepository {
+    + create(projet: Projet): Projet
+    + findById(id: int): Projet
+    + findAll(): List<Projet>
+    + update(projet: Projet): Projet
+    + delete(id: int): void
+    + findByUtilisateur(userId: int): List<Projet>
+    + findTemplates(): List<Projet>
+}
+
+interface ITaskRepository {
+    + create(tache: Tache): Tache
+    + findById(id: int): Tache
+    + findByProjet(projetId: int): List<Tache>
+    + update(tache: Tache): Tache
+    + delete(id: int): void
+    + findSousTaches(tacheId: int): List<Tache>
+    + findByEmploye(employeId: int): List<Tache>
+}
+
+interface ITimesheetRepository {
+    + create(feuille: FeuilleTemps): FeuilleTemps
+    + findById(id: int): FeuilleTemps
+    + findByEmploye(employeId: int, annee: int, semaine: int): FeuilleTemps
+    + update(feuille: FeuilleTemps): FeuilleTemps
+    + findSaisies(feuilleId: int): List<SaisieTemps>
+    + createSaisie(saisie: SaisieTemps): SaisieTemps
+}
+
+interface IUserRepository {
+    + create(user: Utilisateur): Utilisateur
+    + findById(id: int): Utilisateur
+    + findByEmail(email: string): Utilisateur
+    + findAll(): List<Utilisateur>
+    + update(user: Utilisateur): Utilisateur
+    + delete(id: int): void
+}
+
+interface IAuditRepository {
+    + log(log: LogAudit): void
+    + findByUtilisateur(userId: int): List<LogAudit>
+    + findByEntite(entite: string, entiteId: int): List<LogAudit>
+}
+
+' Services métier
+SERVICE ProjectService {
+    - projectRepo: IProjectRepository
+    - taskRepo: ITaskRepository
+    - auditRepo: IAuditRepository
+    - validationService: ValidationService
+    --
+    + creerProjet(data: dict, userId: int): Projet
+    + modifierProjet(id: int, data: dict): Projet
+    + supprimerProjet(id: int): void
+    + obtenirProjet(id: int): Projet
+    + listerProjets(userId: int, role: RoleUtilisateur): List<Projet>
+    + dupliquerProjet(projetId: int): Projet
+    + sauvegarderCommeTemplate(projetId: int): Projet
+    + creerDepuisTemplate(templateId: int, data: dict): Projet
+    + calculerAvancement(projetId: int): float
+    + calculerEcartTemps(projetId: int): dict
+}
+
+SERVICE TaskService {
+    - taskRepo: ITaskRepository
+    - projectRepo: IProjectRepository
+    - auditRepo: IAuditRepository
+    - validationService: ValidationService
+    --
+    + creerTache(projetId: int, data: dict): Tache
+    + creerSousTache(tacheParentId: int, data: dict): Tache
+    + modifierTache(id: int, data: dict): Tache
+    + supprimerTache(id: int): void
+    + changerStatut(id: int, statut: StatutTache): Tache
+    + cloturerTache(id: int, employeId: int): void
+    + obtenirArborescenceTaches(projetId: int): dict
+    + obtenirBacklog(employeId: int): List<Tache>
+    + assignerRessource(tacheId: int, ressourceId: int): void
+}
+
+SERVICE TimesheetService {
+    - timesheetRepo: ITimesheetRepository
+    - taskRepo: ITaskRepository
+    - userRepo: IUserRepository
+    - auditRepo: IAuditRepository
+    - validationService: ValidationService
+    --
+    + obtenirOuCreerFeuille(employeId: int, annee: int, semaine: int): FeuilleTemps
+    + saisirTemps(feuilleId: int, tacheId: int, data: dict): SaisieTemps
+    + modifierSaisie(saisieId: int, data: dict): SaisieTemps
+    + supprimerSaisie(saisieId: int): void
+    + validerFeuille(feuilleId: int, employeId: int): FeuilleTemps
+    + approuverFeuille(feuilleId: int, gestionnaireId: int): FeuilleTemps
+    + verrouillerFeuille(feuilleId: int): void
+    + calculerHeuresParProjet(projetId: int): dict
+    + calculerHeuresParEmploye(employeId: int, dateDebut: date, dateFin: date): dict
+}
+
+SERVICE UserService {
+    - userRepo: IUserRepository
+    - auditRepo: IAuditRepository
+    - validationService: ValidationService
+    --
+    + creerUtilisateur(data: dict): Utilisateur
+    + modifierUtilisateur(id: int, data: dict): Utilisateur
+    + supprimerUtilisateur(id: int): void
+    + obtenirUtilisateur(id: int): Utilisateur
+    + listerUtilisateurs(): List<Utilisateur>
+    + activerDesactiverUtilisateur(id: int, actif: boolean): void
+    + changerRole(id: int, role: RoleUtilisateur): void
+}
+
+SERVICE AuthService {
+    - userRepo: IUserRepository
+    - auditRepo: IAuditRepository
+    --
+    + authentifier(email: string, motDePasse: string): dict
+    + hashMotDePasse(motDePasse: string): string
+    + verifierMotDePasse(motDePasse: string, hash: string): boolean
+    + genererToken(userId: int): string
+    + verifierToken(token: string): dict
+    + changerMotDePasse(userId: int, ancienMdp: string, nouveauMdp: string): boolean
+}
+
+SERVICE GanttService {
+    - taskRepo: ITaskRepository
+    - projectRepo: IProjectRepository
+    --
+    + genererDiagrammeGantt(projetId: int): dict
+    + calculerCheminCritique(projetId: int): List<Tache>
+    + identifierDependances(projetId: int): dict
+}
+
+SERVICE ReportService {
+    - timesheetRepo: ITimesheetRepository
+    - projectRepo: IProjectRepository
+    - taskRepo: ITaskRepository
+    --
+    + genererRapportTempsProjet(projetId: int, dateDebut: date, dateFin: date): dict
+    + genererRapportTempsEmploye(employeId: int, dateDebut: date, dateFin: date): dict
+    + genererRapportEcarts(projetId: int): dict
+    + genererTableauBord(userId: int, role: RoleUtilisateur): dict
+}
+
+SERVICE ValidationService {
+    --
+    + validerProjet(data: dict): List<string>
+    + validerTache(data: dict): List<string>
+    + validerSaisieTemps(data: dict): List<string>
+    + validerUtilisateur(data: dict): List<string>
+    + validerDureeParTranche(duree: float): boolean
+    + validerDates(dateDebut: date, dateFin: date): boolean
+    + validerPermission(userId: int, ressource: string, action: string): boolean
+}
+
+' Relations entre services et repositories
+ProjectService --> IProjectRepository
+ProjectService --> ITaskRepository
+ProjectService --> IAuditRepository
+ProjectService --> ValidationService
+
+TaskService --> ITaskRepository
+TaskService --> IProjectRepository
+TaskService --> IAuditRepository
+TaskService --> ValidationService
+
+TimesheetService --> ITimesheetRepository
+TimesheetService --> ITaskRepository
+TimesheetService --> IUserRepository
+TimesheetService --> IAuditRepository
+TimesheetService --> ValidationService
+
+UserService --> IUserRepository
+UserService --> IAuditRepository
+UserService --> ValidationService
+
+AuthService --> IUserRepository
+AuthService --> IAuditRepository
+
+GanttService --> ITaskRepository
+GanttService --> IProjectRepository
+
+ReportService --> ITimesheetRepository
+ReportService --> IProjectRepository
+ReportService --> ITaskRepository
+
+' Notes
+note right of ValidationService
+  Service transversal utilisé par
+  tous les autres services pour
+  valider les règles métier
+end note
+
+note right of AuthService
+  Gestion centralisée de
+  l'authentification avec
+  chiffrement SHA-256
+end note
+
+@enduml

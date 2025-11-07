@@ -1,0 +1,195 @@
+@startuml Use_Cases
+
+title Diagramme de cas d'utilisation - Plateforme de Gestion de Projets
+
+left to right direction
+
+' Acteurs
+:Administrateur: as Admin
+:Gestionnaire: as Manager
+:Employé: as Employee
+
+rectangle "Système de Gestion de Projets" {
+
+    ' Cas d'utilisation - Gestion des utilisateurs
+    package "Gestion des Utilisateurs" {
+        usecase "Créer utilisateur" as UC1
+        usecase "Modifier utilisateur" as UC2
+        usecase "Supprimer utilisateur" as UC3
+        usecase "Gérer rôles et permissions" as UC4
+        usecase "Activer/Désactiver utilisateur" as UC5
+    }
+
+    ' Cas d'utilisation - Authentification
+    package "Authentification et Sécurité" {
+        usecase "Se connecter" as UC6
+        usecase "Se déconnecter" as UC7
+        usecase "Changer mot de passe" as UC8
+    }
+
+    ' Cas d'utilisation - Gestion des projets
+    package "Gestion des Projets" {
+        usecase "Créer projet" as UC9
+        usecase "Modifier projet" as UC10
+        usecase "Supprimer projet" as UC11
+        usecase "Consulter projets" as UC12
+        usecase "Dupliquer projet" as UC13
+        usecase "Créer template" as UC14
+        usecase "Créer depuis template" as UC15
+        usecase "Visualiser avancement" as UC16
+        usecase "Consulter écarts temps" as UC17
+    }
+
+    ' Cas d'utilisation - Gestion des tâches
+    package "Gestion des Tâches" {
+        usecase "Créer tâche" as UC18
+        usecase "Créer sous-tâche" as UC19
+        usecase "Modifier tâche" as UC20
+        usecase "Supprimer tâche" as UC21
+        usecase "Changer statut tâche" as UC22
+        usecase "Clôturer tâche" as UC23
+        usecase "Assigner ressource" as UC24
+        usecase "Consulter backlog" as UC25
+    }
+
+    ' Cas d'utilisation - Gestion du temps
+    package "Gestion du Temps" {
+        usecase "Saisir temps" as UC26
+        usecase "Modifier saisie temps" as UC27
+        usecase "Supprimer saisie temps" as UC28
+        usecase "Valider feuille temps" as UC29
+        usecase "Approuver feuille temps" as UC30
+        usecase "Consulter feuille temps" as UC31
+    }
+
+    ' Cas d'utilisation - Visualisation et rapports
+    package "Visualisation et Rapports" {
+        usecase "Générer diagramme Gantt" as UC32
+        usecase "Consulter tableau de bord" as UC33
+        usecase "Générer rapport temps projet" as UC34
+        usecase "Générer rapport temps employé" as UC35
+        usecase "Consulter KPIs" as UC36
+    }
+
+    ' Cas d'utilisation - Gestion des ressources
+    package "Gestion des Ressources" {
+        usecase "Créer ressource" as UC37
+        usecase "Modifier ressource" as UC38
+        usecase "Supprimer ressource" as UC39
+        usecase "Consulter ressources" as UC40
+    }
+}
+
+' Relations Administrateur
+Admin --> UC1
+Admin --> UC2
+Admin --> UC3
+Admin --> UC4
+Admin --> UC5
+Admin --> UC6
+Admin --> UC7
+Admin --> UC8
+Admin --> UC9
+Admin --> UC10
+Admin --> UC11
+Admin --> UC12
+Admin --> UC13
+Admin --> UC14
+Admin --> UC15
+Admin --> UC16
+Admin --> UC17
+Admin --> UC18
+Admin --> UC19
+Admin --> UC20
+Admin --> UC21
+Admin --> UC22
+Admin --> UC24
+Admin --> UC30
+Admin --> UC31
+Admin --> UC32
+Admin --> UC33
+Admin --> UC34
+Admin --> UC35
+Admin --> UC36
+Admin --> UC37
+Admin --> UC38
+Admin --> UC39
+Admin --> UC40
+
+' Relations Gestionnaire
+Manager --> UC6
+Manager --> UC7
+Manager --> UC8
+Manager --> UC9
+Manager --> UC10
+Manager --> UC12
+Manager --> UC13
+Manager --> UC14
+Manager --> UC15
+Manager --> UC16
+Manager --> UC17
+Manager --> UC18
+Manager --> UC19
+Manager --> UC20
+Manager --> UC21
+Manager --> UC22
+Manager --> UC24
+Manager --> UC26
+Manager --> UC27
+Manager --> UC28
+Manager --> UC29
+Manager --> UC30
+Manager --> UC31
+Manager --> UC32
+Manager --> UC33
+Manager --> UC34
+Manager --> UC35
+Manager --> UC36
+Manager --> UC40
+
+' Relations Employé
+Employee --> UC6
+Employee --> UC7
+Employee --> UC8
+Employee --> UC12
+Employee --> UC16
+Employee --> UC20
+Employee --> UC22
+Employee --> UC23
+Employee --> UC25
+Employee --> UC26
+Employee --> UC27
+Employee --> UC28
+Employee --> UC29
+Employee --> UC31
+Employee --> UC33
+
+' Dépendances entre cas d'utilisation
+UC13 ..> UC9 : <<include>>
+UC15 ..> UC9 : <<include>>
+UC19 ..> UC18 : <<include>>
+UC26 ..> UC31 : <<include>>
+UC30 ..> UC29 : <<extend>>
+
+' Notes
+note right of UC26
+  La saisie du temps se fait par
+  tranches de 30 minutes (0.5h)
+end note
+
+note right of UC30
+  L'approbation verrouille
+  automatiquement la feuille de temps
+end note
+
+note right of UC14
+  Un projet peut être sauvegardé
+  comme template pour réutilisation
+end note
+
+note right of UC19
+  Profondeur illimitée pour
+  les sous-tâches
+end note
+
+@enduml

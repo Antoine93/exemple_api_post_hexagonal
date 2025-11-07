@@ -11,11 +11,7 @@ from sqlalchemy import String, Integer, DateTime, Boolean, Enum as SQLEnum
 
 from src.domain.entities.user import Utilisateur, RoleUtilisateur
 from src.ports.secondary.user_repository import UserRepositoryPort
-
-
-# Modèle SQLAlchemy (ORM) - Couche technique
-class Base(DeclarativeBase):
-    pass
+from src.adapters.secondary.repositories.sqlalchemy_project_repository import Base
 
 
 class UtilisateurModel(Base):

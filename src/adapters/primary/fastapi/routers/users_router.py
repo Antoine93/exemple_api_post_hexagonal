@@ -94,6 +94,7 @@ def create_user(
         )
 
         # Conversion de l'entité domaine vers le DTO de réponse
+        assert utilisateur.id is not None, "L'utilisateur doit avoir un ID après création"
         return UserResponse(
             id=utilisateur.id,
             nom=utilisateur.nom,
@@ -157,6 +158,7 @@ def get_user(
     try:
         utilisateur = use_cases.obtenir_utilisateur(user_id)
 
+        assert utilisateur.id is not None
         return UserResponse(
             id=utilisateur.id,
             nom=utilisateur.nom,
@@ -188,9 +190,9 @@ def get_user(
     description="Liste tous les utilisateurs avec pagination"
 )
 def list_users(
+    use_cases: UserUseCasesDep,
     offset: int = Query(0, ge=0, description="Nombre d'utilisateurs à sauter"),
-    limit: int = Query(20, ge=1, le=100, description="Nombre max d'utilisateurs"),
-    use_cases: UserUseCasesDep
+    limit: int = Query(20, ge=1, le=100, description="Nombre max d'utilisateurs")
 ) -> List[UserResponse]:
     """
     Endpoint GET /api/users?offset=0&limit=20
@@ -210,7 +212,7 @@ def list_users(
 
         return [
             UserResponse(
-                id=u.id,
+                id=u.id if u.id is not None else 0,  # Type narrowing for mypy
                 nom=u.nom,
                 prenom=u.prenom,
                 email=u.email,
@@ -264,6 +266,7 @@ def update_user(
             email=request.email
         )
 
+        assert utilisateur.id is not None
         return UserResponse(
             id=utilisateur.id,
             nom=utilisateur.nom,
@@ -354,6 +357,7 @@ def activate_user(
             actif=request.actif
         )
 
+        assert utilisateur.id is not None
         return UserResponse(
             id=utilisateur.id,
             nom=utilisateur.nom,
@@ -408,6 +412,7 @@ def change_user_role(
             nouveau_role=nouveau_role
         )
 
+        assert utilisateur.id is not None
         return UserResponse(
             id=utilisateur.id,
             nom=utilisateur.nom,
@@ -442,7 +447,7 @@ def change_password(
     user_id: int,
     request: ChangePasswordRequest,
     use_cases: UserUseCasesDep
-) -> dict:
+) -> dict[str, str]:
     """
     Endpoint POST /api/users/{user_id}/change-password
 
@@ -465,6 +470,8 @@ def change_password(
 
         if success:
             return {"message": "Mot de passe changé avec succès"}
+
+        return {"message": "Échec du changement de mot de passe"}
 
     except EntityNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

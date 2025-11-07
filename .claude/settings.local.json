@@ -14,7 +14,10 @@
       "Bash(uv sync:*)",
       "Bash(uv run:*)",
       "Bash(if not exist documents mkdir documents)",
-      "Bash(/dev/null)"
+      "Bash(/dev/null)",
+      "Bash(ren:*)",
+      "Bash(sqlite3:*)",
+      "Bash(.gitignore)"
     ],
     "deny": [],
     "ask": []

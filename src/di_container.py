@@ -21,8 +21,7 @@ from src.adapters.secondary.repositories.sqlalchemy_project_repository import (
     Base
 )
 from src.adapters.secondary.repositories.sqlalchemy_user_repository import (
-    SQLAlchemyUserRepository,
-    UtilisateurModel
+    SQLAlchemyUserRepository
 )
 from src.ports.primary.project_use_cases import ProjectUseCasesPort
 from src.ports.primary.user_use_cases import UserUseCasesPort
@@ -131,6 +130,49 @@ def get_project_service() -> ProjectUseCasesPort:
 
     # 2. Injecter dans le service du domaine
     service = ProjectService(project_repository=repository)
+
+    # 3. Retourner via l'interface (port primaire)
+    return service
+
+
+def get_user_repository() -> SQLAlchemyUserRepository:
+    """
+    Factory pour créer le repository d'utilisateurs.
+
+    Ici, on choisit l'implémentation concrète (SQLAlchemy).
+    SQLAlchemy supporte: SQLite, MySQL, PostgreSQL, Oracle, etc.
+    Pour changer de BDD: modifier DATABASE_URL dans .env
+
+    NOTE: This function is used for CLI scripts and testing.
+    For FastAPI endpoints, use get_db_session() directly with Depends()
+    to ensure proper session management per request.
+
+    Returns:
+        Implémentation concrète du UserRepositoryPort
+    """
+    # For CLI/scripts: get the next value from the generator
+    # This is acceptable because CLI scripts are short-lived
+    db_session = next(get_db_session())
+    return SQLAlchemyUserRepository(db_session)
+
+
+def get_user_service() -> UserUseCasesPort:
+    """
+    Factory pour créer le service d'utilisateurs.
+
+    C'est ici que l'INJECTION DE DÉPENDANCES se produit:
+    - On crée le repository (adapter secondaire)
+    - On l'injecte dans le service (domaine)
+    - On retourne le service via son interface (port primaire)
+
+    Returns:
+        Service métier (via l'interface UserUseCasesPort)
+    """
+    # 1. Créer l'adapter secondaire (implémentation concrète)
+    repository = get_user_repository()
+
+    # 2. Injecter dans le service du domaine
+    service = UserService(user_repository=repository)
 
     # 3. Retourner via l'interface (port primaire)
     return service

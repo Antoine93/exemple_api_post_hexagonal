@@ -10,7 +10,11 @@ from typing import Annotated
 from src.adapters.primary.fastapi.schemas.project_schemas import (
     CreateProjectRequest,
     UpdateProjectRequest,
-    ProjectResponse
+    ProjectResponse,
+    DupliquerProjetRequest,
+    CreerDepuisTemplateRequest,
+    AvancementResponse,
+    EcartTempsResponse
 )
 from src.domain.exceptions import (
     DomainValidationError,
@@ -45,6 +49,35 @@ def get_project_use_cases() -> ProjectUseCasesPort:
 ProjectUseCasesDep = Annotated[ProjectUseCasesPort, Depends(get_project_use_cases)]
 
 
+def _project_to_response(project) -> ProjectResponse:
+    """Convertit une entité Project du domaine en DTO de réponse."""
+    return ProjectResponse(
+        id=project.id,
+        numero=project.numero,
+        nom=project.nom,
+        description=project.description,
+        date_debut=project.date_debut,
+        date_echeance=project.date_echeance,
+        date_creation=project.date_creation,
+        type=project.type,
+        stade=project.stade,
+        commentaire=project.commentaire,
+        heures_planifiees=project.heures_planifiees,
+        heures_reelles=project.heures_reelles,
+        est_template=project.est_template,
+        projet_template_id=project.projet_template_id,
+        responsable_id=project.responsable_id,
+        entreprise_id=project.entreprise_id,
+        contact_id=project.contact_id,
+        # Champs calculés
+        is_active=project.is_active(),
+        days_remaining=project.days_remaining(),
+        avancement=project.calculer_avancement(),
+        ecart_temps=project.calculer_ecart_temps(),
+        est_en_retard=project.est_en_retard()
+    )
+
+
 @router.post(
     "",
     response_model=ProjectResponse,
@@ -59,73 +92,46 @@ def create_project(
     """
     Endpoint POST /api/projects
 
-    Rôle de cet adapter:
-    1. Recevoir la requête HTTP (FastAPI le fait automatiquement)
-    2. Valider les données (Pydantic le fait automatiquement)
-    3. Appeler le cas d'usage du domaine
-    4. Convertir la réponse du domaine en DTO HTTP
-    5. Gérer les erreurs et les convertir en codes HTTP appropriés
-
-    Args:
-        request: DTO validé par Pydantic
-        use_cases: Service métier injecté (via le port primaire)
-
-    Returns:
-        DTO de réponse avec le projet créé
-
-    Raises:
-        HTTPException: En cas d'erreur métier ou technique
+    Crée un nouveau projet dans le système.
     """
     try:
-        # Appel du cas d'usage du domaine (via le port primaire)
         project = use_cases.create_project(
-            name=request.name,
+            numero=request.numero,
+            nom=request.nom,
             description=request.description,
-            start_date=request.start_date,
-            end_date=request.end_date,
-            budget=request.budget,
-            comment=request.comment,
-            manager_id=request.manager_id
+            date_debut=request.date_debut,
+            date_echeance=request.date_echeance,
+            type=request.type,
+            stade=request.stade,
+            commentaire=request.commentaire,
+            heures_planifiees=request.heures_planifiees,
+            heures_reelles=request.heures_reelles,
+            est_template=request.est_template,
+            projet_template_id=request.projet_template_id,
+            responsable_id=request.responsable_id,
+            entreprise_id=request.entreprise_id,
+            contact_id=request.contact_id
         )
 
-        # Conversion de l'entité domaine vers le DTO de réponse
-        return ProjectResponse(
-            id=project.id,
-            name=project.name,
-            description=project.description,
-            start_date=project.start_date,
-            end_date=project.end_date,
-            budget=project.budget,
-            comment=project.comment,
-            manager_id=project.manager_id,
-            is_active=project.is_active(),
-            days_remaining=project.days_remaining()
-        )
+        return _project_to_response(project)
 
     except ProjectAlreadyExistsError as e:
-        # Duplicate name → 409 Conflict
+        logger.warning(f"Tentative de création d'un projet existant: {e}")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(e)
         )
-    except DomainValidationError as e:
-        # Domain validation error → 400 Bad Request
+    except (ValueError, DomainValidationError) as e:
+        logger.warning(f"Validation error lors de la création: {e}")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-    except ValueError as e:
-        # Entity validation error → 400 Bad Request
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e)
         )
     except Exception as e:
-        # Unexpected error → 500 with generic message
-        logger.error(f"Unexpected error creating project: {str(e)}", exc_info=True)
+        logger.error(f"Erreur inattendue lors de la création: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Erreur interne du serveur"
         )
 
 
@@ -133,55 +139,27 @@ def create_project(
     "/{project_id}",
     response_model=ProjectResponse,
     summary="Récupérer un projet",
-    description="Récupère les détails d'un projet par son ID"
+    description="Récupère un projet par son ID"
 )
 def get_project(
     project_id: int,
     use_cases: ProjectUseCasesDep
 ) -> ProjectResponse:
-    """
-    Endpoint GET /api/projects/{project_id}
-
-    Args:
-        project_id: ID du projet (extrait de l'URL par FastAPI)
-        use_cases: Service métier injecté
-
-    Returns:
-        DTO de réponse avec le projet
-
-    Raises:
-        HTTPException: Si le projet n'existe pas
-    """
+    """Endpoint GET /api/projects/{project_id}"""
     try:
-        # Appel du cas d'usage
         project = use_cases.get_project(project_id)
+        return _project_to_response(project)
 
-        # Conversion vers DTO
-        return ProjectResponse(
-            id=project.id,
-            name=project.name,
-            description=project.description,
-            start_date=project.start_date,
-            end_date=project.end_date,
-            budget=project.budget,
-            comment=project.comment,
-            manager_id=project.manager_id,
-            is_active=project.is_active(),
-            days_remaining=project.days_remaining()
-        )
-
-    except ProjectNotFoundError as e:
-        # Project not found → 404 Not Found
+    except ProjectNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
+            detail=f"Projet avec l'ID {project_id} introuvable"
         )
     except Exception as e:
-        # Unexpected error → 500 with generic message
-        logger.error(f"Unexpected error retrieving project {project_id}: {str(e)}", exc_info=True)
+        logger.error(f"Erreur inattendue: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Erreur interne du serveur"
         )
 
 
@@ -189,51 +167,23 @@ def get_project(
     "",
     response_model=list[ProjectResponse],
     summary="Lister les projets",
-    description="Liste tous les projets avec pagination"
+    description="Récupère la liste des projets avec pagination"
 )
 def list_projects(
     use_cases: ProjectUseCasesDep,
     offset: int = Query(0, ge=0, description="Nombre de projets à ignorer"),
-    limit: int = Query(20, ge=1, le=100, description="Nombre maximum de projets à retourner")
+    limit: int = Query(20, ge=1, le=100, description="Nombre maximum de projets")
 ) -> list[ProjectResponse]:
-    """
-    Endpoint GET /api/projects
-
-    Args:
-        offset: Pagination offset
-        limit: Pagination limit
-        use_cases: Service métier injecté
-
-    Returns:
-        Liste de projets
-    """
+    """Endpoint GET /api/projects"""
     try:
-        # Appel du cas d'usage
         projects = use_cases.list_projects(offset=offset, limit=limit)
-
-        # Conversion vers DTOs
-        return [
-            ProjectResponse(
-                id=project.id,
-                name=project.name,
-                description=project.description,
-                start_date=project.start_date,
-                end_date=project.end_date,
-                budget=project.budget,
-                comment=project.comment,
-                manager_id=project.manager_id,
-                is_active=project.is_active(),
-                days_remaining=project.days_remaining()
-            )
-            for project in projects
-        ]
+        return [_project_to_response(p) for p in projects]
 
     except Exception as e:
-        # Unexpected error → 500 with generic message
-        logger.error(f"Unexpected error listing projects: {str(e)}", exc_info=True)
+        logger.error(f"Erreur lors de la liste: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Erreur interne du serveur"
         )
 
 
@@ -241,84 +191,56 @@ def list_projects(
     "/{project_id}",
     response_model=ProjectResponse,
     summary="Mettre à jour un projet",
-    description="Met à jour un projet existant (tous les champs sont optionnels)"
+    description="Met à jour un projet existant (tous les champs optionnels)"
 )
 def update_project(
     project_id: int,
     request: UpdateProjectRequest,
     use_cases: ProjectUseCasesDep
 ) -> ProjectResponse:
-    """
-    Endpoint PUT /api/projects/{project_id}
-
-    Args:
-        project_id: ID du projet à mettre à jour
-        request: DTO avec les champs à mettre à jour
-        use_cases: Service métier injecté
-
-    Returns:
-        DTO de réponse avec le projet mis à jour
-
-    Raises:
-        HTTPException: En cas d'erreur métier ou technique
-    """
+    """Endpoint PUT /api/projects/{project_id}"""
     try:
-        # Appel du cas d'usage
         project = use_cases.update_project(
             project_id=project_id,
-            name=request.name,
+            numero=request.numero,
+            nom=request.nom,
             description=request.description,
-            start_date=request.start_date,
-            end_date=request.end_date,
-            budget=request.budget,
-            comment=request.comment,
-            manager_id=request.manager_id
+            date_debut=request.date_debut,
+            date_echeance=request.date_echeance,
+            type=request.type,
+            stade=request.stade,
+            commentaire=request.commentaire,
+            heures_planifiees=request.heures_planifiees,
+            heures_reelles=request.heures_reelles,
+            est_template=request.est_template,
+            projet_template_id=request.projet_template_id,
+            responsable_id=request.responsable_id,
+            entreprise_id=request.entreprise_id,
+            contact_id=request.contact_id
         )
 
-        # Conversion vers DTO
-        return ProjectResponse(
-            id=project.id,
-            name=project.name,
-            description=project.description,
-            start_date=project.start_date,
-            end_date=project.end_date,
-            budget=project.budget,
-            comment=project.comment,
-            manager_id=project.manager_id,
-            is_active=project.is_active(),
-            days_remaining=project.days_remaining()
-        )
+        return _project_to_response(project)
 
-    except ProjectNotFoundError as e:
-        # Project not found → 404 Not Found
+    except ProjectNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
+            detail=f"Projet avec l'ID {project_id} introuvable"
         )
     except ProjectAlreadyExistsError as e:
-        # Duplicate name → 409 Conflict
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(e)
         )
-    except DomainValidationError as e:
-        # Domain validation error → 400 Bad Request
+    except (ValueError, DomainValidationError) as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-    except ValueError as e:
-        # Entity validation error → 400 Bad Request
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e)
         )
     except Exception as e:
-        # Unexpected error → 500 with generic message
-        logger.error(f"Unexpected error updating project {project_id}: {str(e)}", exc_info=True)
+        logger.error(f"Erreur inattendue: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Erreur interne du serveur"
         )
 
 
@@ -326,39 +248,260 @@ def update_project(
     "/{project_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Supprimer un projet",
-    description="Supprime un projet existant"
+    description="Supprime un projet par son ID"
 )
 def delete_project(
     project_id: int,
     use_cases: ProjectUseCasesDep
 ) -> None:
-    """
-    Endpoint DELETE /api/projects/{project_id}
-
-    Args:
-        project_id: ID du projet à supprimer
-        use_cases: Service métier injecté
-
-    Returns:
-        None (204 No Content)
-
-    Raises:
-        HTTPException: Si le projet n'existe pas
-    """
+    """Endpoint DELETE /api/projects/{project_id}"""
     try:
-        # Appel du cas d'usage
         use_cases.delete_project(project_id)
 
-    except ProjectNotFoundError as e:
-        # Project not found → 404 Not Found
+    except ProjectNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Projet avec l'ID {project_id} introuvable"
+        )
+    except Exception as e:
+        logger.error(f"Erreur inattendue: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erreur interne du serveur"
+        )
+
+
+# ===== NOUVEAUX ENDPOINTS POUR LES TEMPLATES ET DUPLICATION =====
+
+
+@router.get(
+    "/templates/list",
+    response_model=list[ProjectResponse],
+    summary="Lister les templates",
+    description="Récupère tous les projets templates"
+)
+def list_templates(
+    use_cases: ProjectUseCasesDep
+) -> list[ProjectResponse]:
+    """Endpoint GET /api/projects/templates/list"""
+    try:
+        templates = use_cases.find_templates()
+        return [_project_to_response(t) for t in templates]
+
+    except Exception as e:
+        logger.error(f"Erreur lors de la liste des templates: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erreur interne du serveur"
+        )
+
+
+@router.post(
+    "/{project_id}/duplicate",
+    response_model=ProjectResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Dupliquer un projet",
+    description="Crée une copie d'un projet existant avec de nouvelles informations"
+)
+def duplicate_project(
+    project_id: int,
+    request: DupliquerProjetRequest,
+    use_cases: ProjectUseCasesDep
+) -> ProjectResponse:
+    """Endpoint POST /api/projects/{project_id}/duplicate"""
+    try:
+        project = use_cases.dupliquer_projet(
+            project_id=project_id,
+            nouveau_numero=request.nouveau_numero,
+            nouveau_nom=request.nouveau_nom,
+            nouvelle_date_debut=request.nouvelle_date_debut,
+            nouvelle_date_echeance=request.nouvelle_date_echeance
+        )
+
+        return _project_to_response(project)
+
+    except ProjectNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Projet source avec l'ID {project_id} introuvable"
+        )
+    except ProjectAlreadyExistsError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e)
+        )
+    except (ValueError, DomainValidationError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e)
         )
     except Exception as e:
-        # Unexpected error → 500 with generic message
-        logger.error(f"Unexpected error deleting project {project_id}: {str(e)}", exc_info=True)
+        logger.error(f"Erreur inattendue: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Erreur interne du serveur"
+        )
+
+
+@router.post(
+    "/{project_id}/save-as-template",
+    response_model=ProjectResponse,
+    summary="Sauvegarder comme template",
+    description="Transforme un projet existant en template réutilisable"
+)
+def save_as_template(
+    project_id: int,
+    use_cases: ProjectUseCasesDep
+) -> ProjectResponse:
+    """Endpoint POST /api/projects/{project_id}/save-as-template"""
+    try:
+        project = use_cases.sauvegarder_comme_template(project_id)
+        return _project_to_response(project)
+
+    except ProjectNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Projet avec l'ID {project_id} introuvable"
+        )
+    except Exception as e:
+        logger.error(f"Erreur inattendue: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erreur interne du serveur"
+        )
+
+
+@router.post(
+    "/from-template/{template_id}",
+    response_model=ProjectResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Créer depuis un template",
+    description="Crée un nouveau projet à partir d'un template existant"
+)
+def create_from_template(
+    template_id: int,
+    request: CreerDepuisTemplateRequest,
+    use_cases: ProjectUseCasesDep
+) -> ProjectResponse:
+    """Endpoint POST /api/projects/from-template/{template_id}"""
+    try:
+        project = use_cases.creer_depuis_template(
+            template_id=template_id,
+            numero=request.numero,
+            nom=request.nom,
+            date_debut=request.date_debut,
+            date_echeance=request.date_echeance,
+            responsable_id=request.responsable_id,
+            entreprise_id=request.entreprise_id,
+            contact_id=request.contact_id
+        )
+
+        return _project_to_response(project)
+
+    except ProjectNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Template avec l'ID {template_id} introuvable"
+        )
+    except ProjectAlreadyExistsError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e)
+        )
+    except ValueError as e:
+        # Cas où le projet n'est pas un template
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Erreur inattendue: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erreur interne du serveur"
+        )
+
+
+# ===== ENDPOINTS POUR LES CALCULS =====
+
+
+@router.get(
+    "/{project_id}/avancement",
+    response_model=AvancementResponse,
+    summary="Calculer l'avancement",
+    description="Calcule le pourcentage d'avancement d'un projet"
+)
+def get_avancement(
+    project_id: int,
+    use_cases: ProjectUseCasesDep
+) -> AvancementResponse:
+    """Endpoint GET /api/projects/{project_id}/avancement"""
+    try:
+        # Un seul appel au service pour récupérer le projet
+        project = use_cases.get_project(project_id)
+
+        # Calcul de l'avancement via la méthode métier de l'entité
+        avancement = project.calculer_avancement()
+
+        return AvancementResponse(
+            project_id=project_id,
+            heures_planifiees=project.heures_planifiees,
+            heures_reelles=project.heures_reelles,
+            avancement_pourcentage=avancement
+        )
+
+    except ProjectNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Projet avec l'ID {project_id} introuvable"
+        )
+    except Exception as e:
+        logger.error(f"Erreur inattendue: {e}", exc_info=True, extra={"project_id": project_id})
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erreur interne du serveur"
+        )
+
+
+@router.get(
+    "/{project_id}/ecart-temps",
+    response_model=EcartTempsResponse,
+    summary="Calculer l'écart temps",
+    description="Calcule l'écart entre heures planifiées et réelles"
+)
+def get_ecart_temps(
+    project_id: int,
+    use_cases: ProjectUseCasesDep
+) -> EcartTempsResponse:
+    """Endpoint GET /api/projects/{project_id}/ecart-temps"""
+    try:
+        # Un seul appel au service pour récupérer le projet
+        project = use_cases.get_project(project_id)
+
+        # Calcul de l'écart via la méthode métier de l'entité
+        ecart = project.calculer_ecart_temps()
+
+        # Calcul du pourcentage d'écart
+        ecart_pourcentage = 0.0
+        if project.heures_planifiees > 0:
+            ecart_pourcentage = (ecart / project.heures_planifiees) * 100
+
+        return EcartTempsResponse(
+            project_id=project_id,
+            heures_planifiees=project.heures_planifiees,
+            heures_reelles=project.heures_reelles,
+            ecart=ecart,
+            ecart_pourcentage=ecart_pourcentage
+        )
+
+    except ProjectNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Projet avec l'ID {project_id} introuvable"
+        )
+    except Exception as e:
+        logger.error(f"Erreur inattendue: {e}", exc_info=True, extra={"project_id": project_id})
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erreur interne du serveur"
         )

@@ -17,7 +17,11 @@
       "Bash(/dev/null)",
       "Bash(ren:*)",
       "Bash(sqlite3:*)",
-      "Bash(.gitignore)"
+      "Bash(.gitignore)",
+      "Bash(timeout 10 uv run python:*)",
+      "Bash(git mv:*)",
+      "Bash(del:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

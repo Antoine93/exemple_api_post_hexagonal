@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 from typing import Generator
 
 from src.domain.entities.project import Project
+from src.domain.entities.project_type import ProjectType
 from src.ports.secondary.project_repository import ProjectRepositoryPort
 from src.adapters.secondary.repositories.sqlalchemy_project_repository import (
     ProjectModel,
@@ -120,13 +121,21 @@ def sample_project_data():
     """
     today = date.today()
     return {
-        "name": "Test Project",
+        "numero": "PROJ-001",
+        "nom": "Test Project",
         "description": "A test project description",
-        "start_date": today,
-        "end_date": today + timedelta(days=365),
-        "budget": 100000.0,
-        "comment": "This is a test comment",
-        "manager_id": 1,
+        "date_debut": today,
+        "date_echeance": today + timedelta(days=365),
+        "type": ProjectType.INTERNAL,
+        "stade": "En cours",
+        "commentaire": "This is a test comment",
+        "heures_planifiees": 100.0,
+        "heures_reelles": 0.0,
+        "est_template": False,
+        "projet_template_id": None,
+        "responsable_id": 1,
+        "entreprise_id": 1,
+        "contact_id": None,
     }
 
 
@@ -141,8 +150,10 @@ def sample_project(sample_project_data):
     Returns:
         Project: A valid Project entity with id=None
     """
+    from datetime import datetime
     return Project(
         id=None,
+        date_creation=datetime.now(),
         **sample_project_data
     )
 
@@ -158,8 +169,10 @@ def sample_project_with_id(sample_project_data):
     Returns:
         Project: A valid Project entity with id=1
     """
+    from datetime import datetime
     return Project(
         id=1,
+        date_creation=datetime.now(),
         **sample_project_data
     )
 
@@ -172,38 +185,66 @@ def multiple_projects():
     Returns:
         list[Project]: List of three different Project entities
     """
+    from datetime import datetime
     today = date.today()
 
     projects = [
         Project(
             id=1,
-            name="Project Alpha",
+            numero="PROJ-ALPHA",
+            nom="Project Alpha",
             description="First test project",
-            start_date=today,
-            end_date=today + timedelta(days=365),
-            budget=100000.0,
-            comment="Alpha comment",
-            manager_id=1,
+            date_debut=today,
+            date_echeance=today + timedelta(days=365),
+            type=ProjectType.INTERNAL,
+            stade="En cours",
+            commentaire="Alpha comment",
+            heures_planifiees=100.0,
+            heures_reelles=20.0,
+            est_template=False,
+            projet_template_id=None,
+            responsable_id=1,
+            entreprise_id=1,
+            contact_id=None,
+            date_creation=datetime.now(),
         ),
         Project(
             id=2,
-            name="Project Beta",
+            numero="PROJ-BETA",
+            nom="Project Beta",
             description="Second test project",
-            start_date=today + timedelta(days=30),
-            end_date=today + timedelta(days=395),
-            budget=200000.0,
-            comment="Beta comment",
-            manager_id=2,
+            date_debut=today + timedelta(days=30),
+            date_echeance=today + timedelta(days=395),
+            type=ProjectType.EXTERNAL,
+            stade="Planifié",
+            commentaire="Beta comment",
+            heures_planifiees=200.0,
+            heures_reelles=0.0,
+            est_template=False,
+            projet_template_id=None,
+            responsable_id=2,
+            entreprise_id=2,
+            contact_id=1,
+            date_creation=datetime.now(),
         ),
         Project(
             id=3,
-            name="Project Gamma",
+            numero="PROJ-GAMMA",
+            nom="Project Gamma",
             description="Third test project",
-            start_date=today - timedelta(days=30),
-            end_date=today + timedelta(days=335),
-            budget=150000.0,
-            comment="Gamma comment",
-            manager_id=1,
+            date_debut=today - timedelta(days=30),
+            date_echeance=today + timedelta(days=335),
+            type=ProjectType.MAINTENANCE,
+            stade="Terminé",
+            commentaire="Gamma comment",
+            heures_planifiees=150.0,
+            heures_reelles=180.0,
+            est_template=False,
+            projet_template_id=None,
+            responsable_id=1,
+            entreprise_id=1,
+            contact_id=None,
+            date_creation=datetime.now(),
         ),
     ]
 
@@ -239,6 +280,15 @@ def create_project_in_db(db_session):
         Returns:
             ProjectModel: The created project model
         """
+        from datetime import datetime
+        # Add date_creation if not provided
+        if "date_creation" not in project_data:
+            project_data = {**project_data, "date_creation": datetime.now()}
+
+        # Convert ProjectType enum to string if necessary
+        if "type" in project_data and isinstance(project_data["type"], ProjectType):
+            project_data = {**project_data, "type": project_data["type"].value}
+
         project_model = ProjectModel(**project_data)
         db_session.add(project_model)
         db_session.commit()

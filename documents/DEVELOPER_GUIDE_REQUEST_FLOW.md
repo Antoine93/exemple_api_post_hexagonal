@@ -3,7 +3,7 @@
 **Guide de référence pour implémenter une nouvelle fonctionnalité de A à Z**
 
 **Date:** 2025-11-07
-**Version:** 1.0
+**Version:** 1.1
 **Architecture:** Hexagonale (Ports & Adapters)
 **Public:** Développeurs rejoignant le projet
 
@@ -12,18 +12,19 @@
 ## Table des Matières
 
 1. [Vue d'ensemble](#vue-densemble)
-2. [Checklist Rapide](#checklist-rapide)
-3. [Étape 1: Définir l'Entité du Domaine](#étape-1-définir-lentité-du-domaine)
-4. [Étape 2: Créer les Ports (Interfaces)](#étape-2-créer-les-ports-interfaces)
-5. [Étape 3: Implémenter le Service Métier](#étape-3-implémenter-le-service-métier)
-6. [Étape 4: Créer l'Adapter Repository](#étape-4-créer-ladapter-repository)
-7. [Étape 5: Créer les DTOs (Schemas)](#étape-5-créer-les-dtos-schemas)
-8. [Étape 6: Implémenter le Router FastAPI](#étape-6-implémenter-le-router-fastapi)
-9. [Étape 7: Tests (TDD)](#étape-7-tests-tdd)
-10. [Règles Strictes par Couche](#règles-strictes-par-couche)
-11. [Anti-Patterns à Éviter](#anti-patterns-à-éviter)
-12. [Exemple Complet: Feature "Tasks"](#exemple-complet-feature-tasks)
-13. [Checklist de Validation](#checklist-de-validation)
+2. [Conventions de Nommage](#conventions-de-nommage)
+3. [Checklist Rapide](#checklist-rapide)
+4. [Étape 1: Définir l'Entité du Domaine](#étape-1-définir-lentité-du-domaine)
+5. [Étape 2: Créer les Ports (Interfaces)](#étape-2-créer-les-ports-interfaces)
+6. [Étape 3: Implémenter le Service Métier](#étape-3-implémenter-le-service-métier)
+7. [Étape 4: Créer l'Adapter Repository](#étape-4-créer-ladapter-repository)
+8. [Étape 5: Créer les DTOs (Schemas)](#étape-5-créer-les-dtos-schemas)
+9. [Étape 6: Implémenter le Router FastAPI](#étape-6-implémenter-le-router-fastapi)
+10. [Étape 7: Tests (TDD)](#étape-7-tests-tdd)
+11. [Règles Strictes par Couche](#règles-strictes-par-couche)
+12. [Anti-Patterns à Éviter](#anti-patterns-à-éviter)
+13. [Exemple Complet: Feature "Tasks"](#exemple-complet-feature-tasks)
+14. [Checklist de Validation](#checklist-de-validation)
 
 ---
 
@@ -102,6 +103,137 @@ Dépendent  Définit  Ne dépend
   du       le       de RIEN
 domaine  contrat
 ```
+
+---
+
+## Conventions de Nommage
+
+### 🌍 Règle Fondamentale : Anglais pour le Code, Français pour les Commentaires
+
+Ce projet suit une convention stricte de nommage pour assurer la cohérence et la lisibilité internationale du code.
+
+#### ✅ EN ANGLAIS (obligatoire)
+
+**Tous les éléments de code doivent être nommés en anglais :**
+
+- **Noms de fichiers** : `project_type.py`, `user_repository.py`, `task_service.py`
+- **Classes** : `ProjectService`, `UserRepository`, `TaskEntity`
+- **Méthodes et fonctions** : `calculate_progress()`, `get_user()`, `create_project()`
+- **Variables** : `user_id`, `project_name`, `total_hours`
+- **Constantes** : `MAX_RETRIES`, `DEFAULT_TIMEOUT`
+- **Attributs de classe** : `created_at`, `updated_at`, `is_active`
+- **Paramètres de fonction** : `user_id: int`, `start_date: date`
+- **Valeurs d'énumération** : `ProjectType.INTERNAL`, `Status.ACTIVE`
+
+**Exemples :**
+
+```python
+# ✅ CORRECT
+class ProjectType(str, Enum):
+    INTERNAL = "INTERNAL"
+    EXTERNAL = "EXTERNAL"
+    MAINTENANCE = "MAINTENANCE"
+
+class ProjectService:
+    def calculate_progress(self, project_id: int) -> float:
+        project = self._repository.find_by_id(project_id)
+        return project.calculate_advancement()
+```
+
+```python
+# ❌ INCORRECT
+class TypeProjet(str, Enum):
+    INTERNE = "INTERNE"
+    EXTERNE = "EXTERNE"
+
+class ServiceProjet:
+    def calculer_avancement(self, projet_id: int) -> float:
+        projet = self._depot.trouver_par_id(projet_id)
+        return projet.calculer_avancement()
+```
+
+#### ✅ EN FRANÇAIS (recommandé)
+
+**Tous les commentaires et documentation doivent être en français :**
+
+- **Docstrings de modules** : Description du fichier en français
+- **Docstrings de classes** : Explication du rôle de la classe
+- **Docstrings de méthodes** : Description de la fonction, paramètres, retour, exceptions
+- **Commentaires inline** : Explications du code
+- **Messages d'erreur** : Messages aux développeurs
+- **Logs de debug** : Messages de logging
+
+**Exemples :**
+
+```python
+# ✅ CORRECT
+class ProjectService:
+    """
+    Service métier pour la gestion des projets.
+
+    Ce service contient la logique métier complexe qui va au-delà
+    des simples règles de validation d'une entité.
+    """
+
+    def calculate_progress(self, project_id: int) -> float:
+        """
+        Calcule le pourcentage d'avancement d'un projet.
+
+        Args:
+            project_id: L'identifiant unique du projet
+
+        Returns:
+            Pourcentage d'avancement (0-100%)
+
+        Raises:
+            ProjectNotFoundError: Si le projet n'existe pas
+        """
+        # Récupérer le projet depuis le repository
+        project = self._repository.find_by_id(project_id)
+
+        if project is None:
+            raise ProjectNotFoundError(f"Projet {project_id} introuvable")
+
+        # Calculer via la méthode métier de l'entité
+        return project.calculate_advancement()
+```
+
+#### 📋 Exemples Comparatifs
+
+| Élément | ❌ Incorrect | ✅ Correct |
+|---------|-------------|-----------|
+| Fichier | `type_projet.py` | `project_type.py` |
+| Classe | `TypeProjet` | `ProjectType` |
+| Enum value | `INTERNE` | `INTERNAL` |
+| Méthode | `calculer_avancement()` | `calculate_progress()` |
+| Variable | `heures_reelles` | `actual_hours` |
+| Paramètre | `projet_id` | `project_id` |
+| Docstring | (vide ou anglais) | "Calcule le pourcentage..." |
+| Commentaire | `# Calculate hours` | `# Calcule les heures` |
+
+#### 🎯 Rationnelle
+
+**Pourquoi l'anglais pour le code ?**
+- Compatibilité internationale et réutilisabilité
+- Cohérence avec les libraries Python (Pydantic, FastAPI, SQLAlchemy)
+- Facilite la contribution de développeurs non-francophones
+- Standard de l'industrie pour le code source
+
+**Pourquoi le français pour les commentaires ?**
+- Équipe principalement francophone
+- Documentation métier en français
+- Facilite la compréhension du domaine métier
+- Règles business spécifiques au contexte français
+
+#### ⚠️ Exceptions Autorisées
+
+**Seulement dans ces cas spécifiques :**
+
+1. **Valeurs métier stockées en base** : Si le client demande explicitement des valeurs en français dans la DB
+2. **Messages utilisateur final** : Affichés dans l'interface (mais utiliser i18n)
+3. **Noms de tables/colonnes legacy** : Si migration depuis système existant
+
+**Ces exceptions doivent être documentées et justifiées.**
 
 ---
 

@@ -10,10 +10,12 @@ exemple_api_post_hexagonal/
 │   ├── domain/                        # 🔷 DOMAINE (Business Logic)
 │   │   ├── entities/
 │   │   │   ├── project.py             # Entité Project (logique métier pure)
+│   │   │   ├── type_projet.py         # Enum TypeProjet
 │   │   │   └── user.py                # Entité Utilisateur (logique métier pure)
-│   │   └── services/
-│   │       ├── project_service.py     # Service métier Projects
-│   │       └── user_service.py        # Service métier Users
+│   │   ├── services/
+│   │   │   ├── project_service.py     # Service métier Projects
+│   │   │   └── user_service.py        # Service métier Users
+│   │   └── exceptions.py              # Exceptions métier personnalisées
 │   │
 │   ├── ports/                         # 🔌 PORTS (Interfaces)
 │   │   ├── primary/
@@ -44,14 +46,17 @@ exemple_api_post_hexagonal/
 │   ├── unit/domain/
 │   │   ├── test_project_entity.py
 │   │   ├── test_project_service.py
+│   │   ├── test_type_projet_enum.py
 │   │   ├── test_user_entity.py
 │   │   └── test_user_service.py
 │   ├── integration/
 │   │   ├── test_project_repository.py
 │   │   └── test_user_repository.py
-│   └── e2e/
-│       ├── test_projects_api.py
-│       └── test_users_api.py
+│   ├── e2e/
+│   │   ├── test_projects_api.py
+│   │   ├── test_projects_api_crud.py
+│   │   └── test_users_api.py
+│   └── conftest.py                    # Fixtures partagées
 │
 ├── documents/                         # 📚 Documentation
 │   ├── *.puml                         # Diagrammes PlantUML
@@ -259,32 +264,41 @@ uv run pytest tests/ --cov=src --cov-fail-under=80
 
 ### Suite de Tests
 
-**146 tests répartis en:**
+**60 tests pour Projects (100% passing) répartis en:**
 
-**Request Flow: Projects (104 tests)**
-- **Domaine (20 tests):**
-  - 7 tests de validation d'entité
-  - 6 tests de logique métier
-  - 7 tests d'exceptions personnalisées
+**Request Flow: Projects**
+- **Tests unitaires du domaine (42 tests):**
+  - **Entité Project (34 tests):**
+    - Validation des attributs (numero, nom, dates, heures, type)
+    - Règles métier (dates cohérentes, heures positives)
+    - Méthodes calculées (is_active, days_remaining, calculer_avancement, calculer_ecart_temps, est_en_retard)
+    - Gestion des templates (est_template, projet_template_id)
 
-- **Service (8 tests):**
-  - Tests des cas d'usage (create, get, update, delete, list)
-  - Tests de validation métier
+  - **Enum TypeProjet (8 tests):**
+    - Validation des valeurs (INTERNE, EXTERNE, MAINTENANCE, DEVELOPPEMENT)
+    - Conversion string/enum
+    - Itération et accès
 
-- **Repository (10 tests):**
-  - Tests d'intégration avec SQLite
-  - Tests de persistence, recherche et suppression
+- **Tests unitaires du service (19 tests):**
+  - Tests CRUD de base (create, get, update, delete, list)
+  - Tests de duplication de projet (dupliquer_projet)
+  - Tests de gestion des templates (sauvegarder_comme_template, creer_depuis_template, find_templates)
+  - Tests de calculs (calculer_avancement, calculer_ecart_temps)
+  - Tests de validation métier (unicité numero/nom, dates, heures)
 
-- **API E2E (21 tests):**
-  - Tests de tous les endpoints CRUD
-  - Tests de pagination
-  - Tests de gestion d'erreurs
-  - Tests de documentation API
+- **Tests d'intégration du repository (19 tests):**
+  - Tests avec SQLite en mémoire
+  - CRUD complet (save, find_by_id, update, delete, find_all avec pagination)
+  - Tests d'unicité (exists_by_name, exists_by_numero)
+  - Tests de recherche avancée (find_templates, find_by_template_id, find_by_entreprise, find_by_responsable)
 
-- **Infrastructure (30 tests):**
-  - Tests de setup et fixtures
-  - Tests du DI container
-  - Tests de type checking (mypy strict)
+- **Tests E2E de l'API (22 tests):**
+  - Tests de création avec validation complète des 16 attributs
+  - Tests de lecture et liste avec pagination
+  - Tests de mise à jour partielle
+  - Tests de suppression
+  - Tests de gestion d'erreurs (409 Conflict, 404 Not Found, 422 Validation)
+  - Tests de documentation API (Swagger UI, ReDoc, OpenAPI)
 
 **Request Flow: Users (42 tests)**
 - **Domaine - Entité User (15 tests):**
@@ -333,12 +347,12 @@ uv run black src/ --check
 
 ### Métriques de Qualité
 
-- **Tests:** 138 passing / 146 total (94.5%)
-- **Request Flows:** Projects (100% passing) + Users (94.5% passing)
+- **Tests:** 60 tests Projects (100% passing) + 42 tests Users (84% passing)
+- **Request Flows:** Projects (100% passing) + Users (84% passing)
 - **Type Safety:** mypy --strict (0 errors)
 - **Architecture:** Hexagonale (Ports & Adapters)
 - **Zéro dépendance:** Le domaine est 100% pur Python
-- **Coverage:** 87% (unit + integration + e2e)
+- **Coverage:** 64% (unit + integration + e2e)
 
 ## Utilisation de l'API
 
@@ -364,6 +378,8 @@ uv run python create_project_interactive.py
 
 ## API Projects - Gestion de Projets
 
+L'API Projects expose **11 endpoints** pour gérer le cycle de vie complet des projets, incluant la duplication, les templates et les calculs.
+
 ### POST /api/projects - Créer un projet
 
 **Requête:**
@@ -372,30 +388,56 @@ uv run python create_project_interactive.py
 curl -X POST "http://localhost:8000/api/projects" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Projet Alpha",
+    "numero": "PROJ-2025-001",
+    "nom": "Projet Alpha",
     "description": "Description du projet Alpha",
-    "start_date": "2025-01-01",
-    "end_date": "2025-12-31",
-    "budget": 100000.50,
-    "comment": "Commentaire optionnel",
-    "manager_id": 1
+    "date_debut": "2025-01-01",
+    "date_echeance": "2025-12-31",
+    "type": "INTERNE",
+    "stade": "En cours",
+    "commentaire": "Commentaire optionnel",
+    "heures_planifiees": 200.0,
+    "heures_reelles": 0.0,
+    "est_template": false,
+    "projet_template_id": null,
+    "responsable_id": 1,
+    "entreprise_id": 1,
+    "contact_id": null
   }'
 ```
+
+**Types de projet disponibles:**
+- `INTERNE` - Projet interne
+- `EXTERNE` - Projet client
+- `MAINTENANCE` - Maintenance
+- `DEVELOPPEMENT` - Développement
 
 **Réponse (201 Created):**
 
 ```json
 {
   "id": 1,
-  "name": "Projet Alpha",
+  "numero": "PROJ-2025-001",
+  "nom": "Projet Alpha",
   "description": "Description du projet Alpha",
-  "start_date": "2025-01-01",
-  "end_date": "2025-12-31",
-  "budget": 100000.5,
-  "comment": "Commentaire optionnel",
-  "manager_id": 1,
+  "date_debut": "2025-01-01",
+  "date_echeance": "2025-12-31",
+  "date_creation": "2025-11-07T10:30:00",
+  "type": "INTERNE",
+  "stade": "En cours",
+  "commentaire": "Commentaire optionnel",
+  "heures_planifiees": 200.0,
+  "heures_reelles": 0.0,
+  "est_template": false,
+  "projet_template_id": null,
+  "responsable_id": 1,
+  "entreprise_id": 1,
+  "contact_id": null,
   "is_active": true,
-  "days_remaining": 252
+  "days_remaining": 252,
+  "avancement": 0.0,
+  "ecart_temps": 0.0,
+  "est_en_retard": false
 }
 ```
 
@@ -412,15 +454,27 @@ curl -X GET "http://localhost:8000/api/projects/1"
 ```json
 {
   "id": 1,
-  "name": "Projet Alpha",
+  "numero": "PROJ-2025-001",
+  "nom": "Projet Alpha",
   "description": "Description du projet Alpha",
-  "start_date": "2025-01-01",
-  "end_date": "2025-12-31",
-  "budget": 100000.5,
-  "comment": "Commentaire optionnel",
-  "manager_id": 1,
+  "date_debut": "2025-01-01",
+  "date_echeance": "2025-12-31",
+  "date_creation": "2025-11-07T10:30:00",
+  "type": "INTERNE",
+  "stade": "En cours",
+  "commentaire": "Commentaire optionnel",
+  "heures_planifiees": 200.0,
+  "heures_reelles": 50.0,
+  "est_template": false,
+  "projet_template_id": null,
+  "responsable_id": 1,
+  "entreprise_id": 1,
+  "contact_id": null,
   "is_active": true,
-  "days_remaining": 252
+  "days_remaining": 252,
+  "avancement": 25.0,
+  "ecart_temps": -150.0,
+  "est_en_retard": false
 }
 ```
 
@@ -514,6 +568,120 @@ curl -X DELETE "http://localhost:8000/api/projects/1"
 **Réponse (204 No Content):**
 
 Pas de contenu retourné en cas de succès.
+
+---
+
+### Endpoints Avancés - Templates et Duplication
+
+### POST /api/projects/{project_id}/duplicate - Dupliquer un projet
+
+**Requête:**
+
+```bash
+curl -X POST "http://localhost:8000/api/projects/1/duplicate" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nouveau_numero": "PROJ-2025-002",
+    "nouveau_nom": "Projet Alpha - Copie",
+    "nouvelle_date_debut": "2025-02-01",
+    "nouvelle_date_echeance": "2025-12-31"
+  }'
+```
+
+**Réponse (201 Created):**
+
+Le projet dupliqué avec les mêmes caractéristiques que l'original, mais avec `heures_reelles` remis à 0.
+
+### POST /api/projects/{project_id}/save-as-template - Sauvegarder comme template
+
+**Requête:**
+
+```bash
+curl -X POST "http://localhost:8000/api/projects/1/save-as-template"
+```
+
+**Réponse (200 OK):**
+
+Le projet est marqué comme template (`est_template: true`) et peut être réutilisé.
+
+### GET /api/projects/templates/list - Lister les templates
+
+**Requête:**
+
+```bash
+curl -X GET "http://localhost:8000/api/projects/templates/list"
+```
+
+**Réponse (200 OK):**
+
+Liste de tous les projets marqués comme templates.
+
+### POST /api/projects/from-template/{template_id} - Créer depuis un template
+
+**Requête:**
+
+```bash
+curl -X POST "http://localhost:8000/api/projects/from-template/1" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "numero": "PROJ-2025-003",
+    "nom": "Nouveau Projet",
+    "date_debut": "2025-03-01",
+    "date_echeance": "2025-12-31",
+    "responsable_id": 2,
+    "entreprise_id": 1,
+    "contact_id": null
+  }'
+```
+
+**Réponse (201 Created):**
+
+Nouveau projet créé à partir du template avec `projet_template_id` référençant le template source.
+
+---
+
+### Endpoints de Calculs
+
+### GET /api/projects/{project_id}/avancement - Calculer l'avancement
+
+**Requête:**
+
+```bash
+curl -X GET "http://localhost:8000/api/projects/1/avancement"
+```
+
+**Réponse (200 OK):**
+
+```json
+{
+  "project_id": 1,
+  "heures_planifiees": 200.0,
+  "heures_reelles": 50.0,
+  "avancement_pourcentage": 25.0
+}
+```
+
+### GET /api/projects/{project_id}/ecart-temps - Calculer l'écart temps
+
+**Requête:**
+
+```bash
+curl -X GET "http://localhost:8000/api/projects/1/ecart-temps"
+```
+
+**Réponse (200 OK):**
+
+```json
+{
+  "project_id": 1,
+  "heures_planifiees": 200.0,
+  "heures_reelles": 250.0,
+  "ecart": 50.0,
+  "ecart_pourcentage": 25.0
+}
+```
+
+**Note:** Un écart positif signifie un dépassement, un écart négatif signifie qu'il reste des heures disponibles.
 
 ---
 
@@ -757,18 +925,36 @@ curl -X POST "http://localhost:8000/api/users/1/change-password" \
 
 #### Validation dans l'Entité (domain/entities/project.py)
 
-1. **Nom du projet:** Ne peut pas être vide
-2. **Budget:** Doit être strictement positif (> 0)
-3. **Dates:** La date de fin doit être après la date de début
+1. **Numéro du projet:** Requis, unique, max 50 caractères
+2. **Nom du projet:** Requis, unique, max 255 caractères
+3. **Type de projet:** Doit être l'un des 4 types (INTERNE, EXTERNE, MAINTENANCE, DEVELOPPEMENT)
+4. **Heures planifiées:** Doivent être >= 0
+5. **Heures réelles:** Doivent être >= 0
+6. **Dates:** La date d'échéance doit être après la date de début
+7. **Template:** Un projet ne peut pas être créé depuis un projet non-template
+
+#### Méthodes Calculées (domain/entities/project.py)
+
+1. **is_active():** Projet actif si date d'échéance >= aujourd'hui
+2. **days_remaining():** Nombre de jours restants (0 si terminé)
+3. **calculer_avancement():** Pourcentage basé sur heures_reelles/heures_planifiees
+4. **calculer_ecart_temps():** Différence entre heures réelles et planifiées
+5. **est_en_retard():** Retard si date dépassée OU heures dépassées
 
 #### Validation dans le Service (domain/services/project_service.py)
 
-1. **Unicité du nom:** Un projet avec le même nom ne peut pas déjà exister
+1. **Unicité du numéro:** Un projet avec le même numéro ne peut pas déjà exister
+2. **Unicité du nom:** Un projet avec le même nom ne peut pas déjà exister
+3. **Duplication:** Réinitialise heures_reelles à 0, copie toutes les autres données
+4. **Template:** Vérifie que le projet source est bien un template avant création
+5. **Calculs:** Validation que le projet existe avant calcul d'avancement/écart
 
 #### Validation HTTP (adapters/primary/fastapi/schemas/project_schemas.py)
 
 1. **Format des données:** Validation Pydantic des types et formats
-2. **Contraintes:** min_length, max_length, gt (greater than)
+2. **Contraintes:** min_length, max_length, ge (greater or equal), gt (greater than)
+3. **Enum validation:** Type de projet doit être une valeur valide
+4. **Dates:** Validation de format ISO et cohérence des dates
 
 ### Request Flow: Users
 
@@ -804,8 +990,11 @@ Le projet implémente **deux request flows complets** (Projects et Users) suivan
 ### Architecture par Couches (identique pour Projects et Users)
 
 **1. Entités du Domaine**
-- `domain/entities/project.py` - Logique métier Projects
-  - Méthodes métier: `is_active()`, `days_remaining()`
+- `domain/entities/project.py` - Logique métier Projects (16 attributs)
+  - Attributs clés: numero, nom, type, heures_planifiees, heures_reelles, est_template
+  - Méthodes métier: `is_active()`, `days_remaining()`, `calculer_avancement()`, `calculer_ecart_temps()`, `est_en_retard()`
+- `domain/entities/type_projet.py` - Enum TypeProjet
+  - Valeurs: INTERNE, EXTERNE, MAINTENANCE, DEVELOPPEMENT
 - `domain/entities/user.py` - Logique métier Users
   - Méthodes métier: `hash_mot_de_passe()`, `verifier_mot_de_passe()`, `peut_gerer_projets()`
 - **Dépendances:** Aucune (Python pur)
@@ -813,7 +1002,9 @@ Le projet implémente **deux request flows complets** (Projects et Users) suivan
 
 **2. Ports Secondaires (Interfaces de Persistance)**
 - `ports/secondary/project_repository.py`
-  - Méthodes: save, find_by_id, find_all, exists_by_name, update, delete
+  - Méthodes de base: save, find_by_id, find_all, update, delete
+  - Méthodes d'unicité: exists_by_name, exists_by_numero
+  - Méthodes de recherche: find_templates, find_by_template_id, find_by_entreprise, find_by_responsable
 - `ports/secondary/user_repository.py`
   - Méthodes: save, find_by_id, find_by_email, find_all, exists_by_email, update, delete
 - **Type:** Interfaces abstraites (ABC)
@@ -821,7 +1012,10 @@ Le projet implémente **deux request flows complets** (Projects et Users) suivan
 
 **3. Services du Domaine**
 - `domain/services/project_service.py`
-  - Cas d'usage: create_project, get_project, update_project, delete_project, list_projects
+  - Cas d'usage de base: create_project, get_project, update_project, delete_project, list_projects
+  - Gestion templates: sauvegarder_comme_template, creer_depuis_template, find_templates
+  - Duplication: dupliquer_projet
+  - Calculs: calculer_avancement, calculer_ecart_temps
 - `domain/services/user_service.py`
   - Cas d'usage: creer_utilisateur, obtenir_utilisateur, modifier_utilisateur, supprimer_utilisateur, activer_desactiver_utilisateur, changer_role, changer_mot_de_passe
 - **Dépendances:** Port secondaire (interface uniquement)
@@ -845,13 +1039,19 @@ Le projet implémente **deux request flows complets** (Projects et Users) suivan
 
 **6. Schemas Pydantic (DTOs HTTP)**
 - `adapters/primary/fastapi/schemas/project_schemas.py`
-  - DTOs: CreateProjectRequest, UpdateProjectRequest, ProjectResponse
+  - DTOs de base: CreateProjectRequest, UpdateProjectRequest, ProjectResponse
+  - DTOs avancés: DupliquerProjetRequest, CreerDepuisTemplateRequest, AvancementResponse, EcartTempsResponse
+  - Enums: TypeProjetEnum
 - `adapters/primary/fastapi/schemas/user_schemas.py`
   - DTOs: CreateUserRequest, UpdateUserRequest, ChangePasswordRequest, ChangeRoleRequest, ActivateUserRequest, UserResponse
 - **Rôle:** Définir les DTOs HTTP et validation de base
 
 **7. Routers FastAPI (Endpoints HTTP)**
-- `adapters/primary/fastapi/routers/projects_router.py` - 5 endpoints CRUD
+- `adapters/primary/fastapi/routers/projects_router.py` - 11 endpoints
+  - CRUD de base: POST, GET, PUT, DELETE, LIST (5 endpoints)
+  - Templates: save-as-template, from-template, templates/list (3 endpoints)
+  - Duplication: duplicate (1 endpoint)
+  - Calculs: avancement, ecart-temps (2 endpoints)
 - `adapters/primary/fastapi/routers/users_router.py` - 8 endpoints (CRUD + gestion utilisateurs)
 - **Dépendances:** Port primaire (interface)
 - **Rôle:** Exposer les endpoints HTTP, conversion DTO ↔ Entité, codes HTTP
@@ -963,7 +1163,14 @@ Séparation claire des responsabilités:
 ## Fonctionnalités Implémentées
 
 ### Request Flows
-- **Projects API:** CRUD complet pour la gestion de projets (5 endpoints)
+- **Projects API:** Gestion complète de projets avec fonctionnalités avancées (11 endpoints)
+  - CRUD de base (create, read, update, delete, list)
+  - Gestion des templates (save-as-template, create-from-template, list-templates)
+  - Duplication de projets avec réinitialisation des heures réelles
+  - Calculs métier (avancement basé sur heures, écart temps, détection retard)
+  - 16 attributs par projet incluant type, heures, entreprise, stade
+  - 4 types de projet (INTERNE, EXTERNE, MAINTENANCE, DEVELOPPEMENT)
+
 - **Users API:** Gestion complète des utilisateurs avec authentification (8 endpoints)
   - Création et modification d'utilisateurs
   - Gestion des rôles (ADMINISTRATEUR, GESTIONNAIRE, EMPLOYE)
@@ -972,12 +1179,11 @@ Séparation claire des responsabilités:
   - Hashage SHA-256 des mots de passe
 
 ### Qualité et Tests
-- **Tests Complets:** 146 tests répartis en 3 niveaux (unit, integration, e2e)
-  - 138 passing (94.5%)
-  - Projects: 100% passing
-  - Users: 94.5% passing (8 fails E2E dus à isolation DB, logique validée)
+- **Tests Complets:** 102 tests répartis en 3 niveaux (unit, integration, e2e)
+  - Projects: 60 tests (100% passing)
+  - Users: 42 tests (84% passing - 8 fails E2E dus à isolation DB, logique validée)
 - **Type Safety:** mypy --strict sans erreurs
-- **Coverage:** 87% avec pytest-cov
+- **Coverage:** 64% avec pytest-cov
 
 ### Architecture
 - **Architecture Hexagonale:** Isolation complète du domaine
@@ -1088,5 +1294,5 @@ uvx mypy src/
 ---
 
 **Date:** 07-11-2025
-**Version:** 3.0 - Ajout du request flow Users + Migration vers uv
-**Request Flows implémentés:** Projects, Users
+**Version:** 4.0 - Enrichissement du request flow Projects (16 attributs + templates + duplication + calculs)
+**Request Flows implémentés:** Projects (enrichi), Users

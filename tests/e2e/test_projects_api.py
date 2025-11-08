@@ -30,13 +30,21 @@ class TestCreateProjectEndpoint:
         # Arrange
         today = date.today()
         project_data = {
-            "name": f"Test API Project {client.test_id}",
+            "numero": f"PROJ-API-{client.test_id}",
+            "nom": f"Test API Project {client.test_id}",
             "description": "A project created via API",
-            "start_date": today.isoformat(),
-            "end_date": (today + timedelta(days=30)).isoformat(),
-            "budget": 50000.0,
-            "comment": "Test comment",
-            "manager_id": 1
+            "date_debut": today.isoformat(),
+            "date_echeance": (today + timedelta(days=30)).isoformat(),
+            "type": "INTERNE",
+            "stade": "En cours",
+            "commentaire": "Test comment",
+            "heures_planifiees": 100.0,
+            "heures_reelles": 0.0,
+            "est_template": False,
+            "projet_template_id": None,
+            "responsable_id": 1,
+            "entreprise_id": 1,
+            "contact_id": None
         }
 
         # Act
@@ -46,50 +54,105 @@ class TestCreateProjectEndpoint:
         assert response.status_code == 201
         data = response.json()
         assert data["id"] is not None
-        assert f"Test API Project {client.test_id}" in data["name"]
+        assert f"Test API Project {client.test_id}" in data["nom"]
         assert data["description"] == "A project created via API"
-        assert data["budget"] == 50000.0
-        assert data["manager_id"] == 1
+        assert data["heures_planifiees"] == 100.0
+        assert data["responsable_id"] == 1
+        assert data["entreprise_id"] == 1
         assert "is_active" in data
         assert "days_remaining" in data
+        assert "avancement" in data
+        assert "ecart_temps" in data
+        assert "est_en_retard" in data
 
-    def test_create_project_duplicate_name_returns_409(self, client):
-        """Test that creating a project with duplicate name returns 409 Conflict."""
+    def test_create_project_duplicate_numero_returns_409(self, client):
+        """Test that creating a project with duplicate numero returns 409 Conflict."""
         # Arrange
         today = date.today()
         project_data = {
-            "name": f"Duplicate Project {client.test_id}",
+            "numero": f"PROJ-DUP-NUM-{client.test_id}",
+            "nom": f"Duplicate Numero Project {client.test_id}",
             "description": "First project",
-            "start_date": today.isoformat(),
-            "end_date": (today + timedelta(days=30)).isoformat(),
-            "budget": 10000.0,
-            "comment": None,
-            "manager_id": 1
+            "date_debut": today.isoformat(),
+            "date_echeance": (today + timedelta(days=30)).isoformat(),
+            "type": "INTERNE",
+            "stade": "En cours",
+            "commentaire": None,
+            "heures_planifiees": 100.0,
+            "heures_reelles": 0.0,
+            "est_template": False,
+            "projet_template_id": None,
+            "responsable_id": 1,
+            "entreprise_id": 1,
+            "contact_id": None
         }
 
         # Create first project
         response1 = client.post("/api/projects", json=project_data)
         assert response1.status_code == 201
 
-        # Act - Try to create duplicate
+        # Act - Try to create duplicate numero (different name)
+        project_data["nom"] = f"Different Name {client.test_id}"
         response2 = client.post("/api/projects", json=project_data)
 
         # Assert
         assert response2.status_code == 409
-        assert "existe déjà" in response2.json()["detail"]
+        assert "numéro" in response2.json()["detail"]
 
-    def test_create_project_invalid_budget_returns_422(self, client):
-        """Test that negative budget returns 422 validation error."""
+    def test_create_project_duplicate_name_returns_409(self, client):
+        """Test that creating a project with duplicate name returns 409 Conflict."""
         # Arrange
         today = date.today()
         project_data = {
-            "name": "Invalid Budget Project",
-            "description": "Has negative budget",
-            "start_date": today.isoformat(),
-            "end_date": (today + timedelta(days=30)).isoformat(),
-            "budget": -5000.0,
-            "comment": None,
-            "manager_id": 1
+            "numero": f"PROJ-DUP-NOM-1-{client.test_id}",
+            "nom": f"Duplicate Name Project {client.test_id}",
+            "description": "First project",
+            "date_debut": today.isoformat(),
+            "date_echeance": (today + timedelta(days=30)).isoformat(),
+            "type": "INTERNE",
+            "stade": "En cours",
+            "commentaire": None,
+            "heures_planifiees": 100.0,
+            "heures_reelles": 0.0,
+            "est_template": False,
+            "projet_template_id": None,
+            "responsable_id": 1,
+            "entreprise_id": 1,
+            "contact_id": None
+        }
+
+        # Create first project
+        response1 = client.post("/api/projects", json=project_data)
+        assert response1.status_code == 201
+
+        # Act - Try to create duplicate name (different numero)
+        project_data["numero"] = f"PROJ-DUP-NOM-2-{client.test_id}"
+        response2 = client.post("/api/projects", json=project_data)
+
+        # Assert
+        assert response2.status_code == 409
+        assert "nom" in response2.json()["detail"]
+
+    def test_create_project_invalid_heures_returns_422(self, client):
+        """Test that negative heures_planifiees returns 422 validation error."""
+        # Arrange
+        today = date.today()
+        project_data = {
+            "numero": f"PROJ-INV-HEURES-{client.test_id}",
+            "nom": "Invalid Heures Project",
+            "description": "Has negative heures",
+            "date_debut": today.isoformat(),
+            "date_echeance": (today + timedelta(days=30)).isoformat(),
+            "type": "INTERNE",
+            "stade": "En cours",
+            "commentaire": None,
+            "heures_planifiees": -50.0,
+            "heures_reelles": 0.0,
+            "est_template": False,
+            "projet_template_id": None,
+            "responsable_id": 1,
+            "entreprise_id": 1,
+            "contact_id": None
         }
 
         # Act
@@ -98,20 +161,28 @@ class TestCreateProjectEndpoint:
         # Assert
         assert response.status_code == 422
         errors = response.json()["detail"]
-        assert any("budget" in str(error).lower() for error in errors)
+        assert any("heures" in str(error).lower() for error in errors)
 
-    def test_create_project_invalid_dates_returns_400(self, client):
-        """Test that end_date before start_date returns 400."""
+    def test_create_project_invalid_dates_returns_422(self, client):
+        """Test that date_echeance before date_debut returns 422."""
         # Arrange
         today = date.today()
         project_data = {
-            "name": "Invalid Dates Project",
+            "numero": f"PROJ-INV-DATES-{client.test_id}",
+            "nom": "Invalid Dates Project",
             "description": "Has invalid dates",
-            "start_date": today.isoformat(),
-            "end_date": (today - timedelta(days=10)).isoformat(),
-            "budget": 10000.0,
-            "comment": None,
-            "manager_id": 1
+            "date_debut": today.isoformat(),
+            "date_echeance": (today - timedelta(days=10)).isoformat(),
+            "type": "INTERNE",
+            "stade": "En cours",
+            "commentaire": None,
+            "heures_planifiees": 100.0,
+            "heures_reelles": 0.0,
+            "est_template": False,
+            "projet_template_id": None,
+            "responsable_id": 1,
+            "entreprise_id": 1,
+            "contact_id": None
         }
 
         # Act
@@ -131,13 +202,21 @@ class TestGetProjectEndpoint:
         # Arrange - Create a project first
         today = date.today()
         project_data = {
-            "name": f"Project to Retrieve {client.test_id}",
+            "numero": f"PROJ-RETRIEVE-{client.test_id}",
+            "nom": f"Project to Retrieve {client.test_id}",
             "description": "Will be retrieved",
-            "start_date": today.isoformat(),
-            "end_date": (today + timedelta(days=30)).isoformat(),
-            "budget": 15000.0,
-            "comment": "Retrieve me",
-            "manager_id": 1
+            "date_debut": today.isoformat(),
+            "date_echeance": (today + timedelta(days=30)).isoformat(),
+            "type": "INTERNE",
+            "stade": "En cours",
+            "commentaire": "Retrieve me",
+            "heures_planifiees": 150.0,
+            "heures_reelles": 50.0,
+            "est_template": False,
+            "projet_template_id": None,
+            "responsable_id": 1,
+            "entreprise_id": 1,
+            "contact_id": None
         }
         create_response = client.post("/api/projects", json=project_data)
         assert create_response.status_code == 201
@@ -150,9 +229,12 @@ class TestGetProjectEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == project_id
-        assert f"Project to Retrieve {client.test_id}" in data["name"]
+        assert f"Project to Retrieve {client.test_id}" in data["nom"]
         assert data["is_active"] is True
         assert data["days_remaining"] >= 0
+        assert data["avancement"] > 0  # Should have some progress since heures_reelles > 0
+        assert "ecart_temps" in data
+        assert "est_en_retard" in data
 
     def test_get_project_not_found_returns_404(self, client):
         """Test that getting non-existent project returns 404."""
@@ -164,7 +246,7 @@ class TestGetProjectEndpoint:
 
         # Assert
         assert response.status_code == 404
-        assert "n'existe pas" in response.json()["detail"]
+        assert "introuvable" in response.json()["detail"].lower()
 
 
 class TestAPIDocumentation:
@@ -180,7 +262,7 @@ class TestAPIDocumentation:
         schema = response.json()
         assert "openapi" in schema
         assert "info" in schema
-        assert schema["info"]["title"] == "Project Management API"
+        assert schema["info"]["title"] == "Project & User Management API"
 
     def test_swagger_ui_accessible(self, client):
         """Test that Swagger UI documentation is accessible."""

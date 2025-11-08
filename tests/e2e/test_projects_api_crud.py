@@ -26,8 +26,8 @@ def unique_name():
 class TestUpdateProjectEndpoint:
     """Test suite for PUT /api/projects/{id} endpoint."""
 
-    def test_update_project_name_success(self, client: TestClient, unique_name: str):
-        """Test updating only the project name."""
+    def test_update_project_nom_success(self, client: TestClient, unique_name: str):
+        """Test updating only the project nom."""
         # Arrange: Create a project first
         today = date.today()
         original_name = f"{unique_name}-original"
@@ -36,30 +36,38 @@ class TestUpdateProjectEndpoint:
         create_response = client.post(
             "/api/projects",
             json={
-                "name": original_name,
+                "numero": f"PROJ-UPD-NOM-{uuid.uuid4().hex[:8]}",
+                "nom": original_name,
                 "description": "Test project",
-                "start_date": str(today),
-                "end_date": str(today + timedelta(days=365)),
-                "budget": 100000.0,
-                "comment": "Original comment",
-                "manager_id": 1
+                "date_debut": str(today),
+                "date_echeance": str(today + timedelta(days=365)),
+                "type": "INTERNE",
+                "stade": "En cours",
+                "commentaire": "Original comment",
+                "heures_planifiees": 100.0,
+                "heures_reelles": 0.0,
+                "est_template": False,
+                "projet_template_id": None,
+                "responsable_id": 1,
+                "entreprise_id": 1,
+                "contact_id": None
             }
         )
         assert create_response.status_code == 201
         project_id = create_response.json()["id"]
 
-        # Act: Update the name
+        # Act: Update the nom
         update_response = client.put(
             f"/api/projects/{project_id}",
-            json={"name": updated_name}
+            json={"nom": updated_name}
         )
 
         # Assert
         assert update_response.status_code == 200
         data = update_response.json()
-        assert data["name"] == updated_name
+        assert data["nom"] == updated_name
         assert data["description"] == "Test project"  # Unchanged
-        assert data["budget"] == 100000.0  # Unchanged
+        assert data["heures_planifiees"] == 100.0  # Unchanged
 
     def test_update_project_multiple_fields(self, client: TestClient, unique_name: str):
         """Test updating multiple fields at once."""
@@ -70,13 +78,21 @@ class TestUpdateProjectEndpoint:
         create_response = client.post(
             "/api/projects",
             json={
-                "name": name,
+                "numero": f"PROJ-UPD-MULTI-{uuid.uuid4().hex[:8]}",
+                "nom": name,
                 "description": "Original description",
-                "start_date": str(today),
-                "end_date": str(today + timedelta(days=365)),
-                "budget": 100000.0,
-                "comment": "Original comment",
-                "manager_id": 1
+                "date_debut": str(today),
+                "date_echeance": str(today + timedelta(days=365)),
+                "type": "INTERNE",
+                "stade": "En cours",
+                "commentaire": "Original comment",
+                "heures_planifiees": 100.0,
+                "heures_reelles": 0.0,
+                "est_template": False,
+                "projet_template_id": None,
+                "responsable_id": 1,
+                "entreprise_id": 1,
+                "contact_id": None
             }
         )
         assert create_response.status_code == 201
@@ -87,25 +103,27 @@ class TestUpdateProjectEndpoint:
             f"/api/projects/{project_id}",
             json={
                 "description": "Updated description",
-                "budget": 200000.0,
-                "comment": "Updated comment"
+                "heures_planifiees": 200.0,
+                "heures_reelles": 50.0,
+                "commentaire": "Updated comment"
             }
         )
 
         # Assert
         assert update_response.status_code == 200
         data = update_response.json()
-        assert data["name"] == name  # Unchanged
+        assert data["nom"] == name  # Unchanged
         assert data["description"] == "Updated description"
-        assert data["budget"] == 200000.0
-        assert data["comment"] == "Updated comment"
+        assert data["heures_planifiees"] == 200.0
+        assert data["heures_reelles"] == 50.0
+        assert data["commentaire"] == "Updated comment"
 
     def test_update_project_not_found(self, client: TestClient):
         """Test updating a non-existent project returns 404."""
         # Act
         response = client.put(
             "/api/projects/99999",
-            json={"name": "New Name"}
+            json={"nom": "New Name"}
         )
 
         # Assert
@@ -122,26 +140,42 @@ class TestUpdateProjectEndpoint:
         client.post(
             "/api/projects",
             json={
-                "name": name_a,
+                "numero": f"PROJ-UPD-DUP-A-{uuid.uuid4().hex[:8]}",
+                "nom": name_a,
                 "description": "First project",
-                "start_date": str(today),
-                "end_date": str(today + timedelta(days=365)),
-                "budget": 100000.0,
-                "comment": None,
-                "manager_id": 1
+                "date_debut": str(today),
+                "date_echeance": str(today + timedelta(days=365)),
+                "type": "INTERNE",
+                "stade": "En cours",
+                "commentaire": None,
+                "heures_planifiees": 100.0,
+                "heures_reelles": 0.0,
+                "est_template": False,
+                "projet_template_id": None,
+                "responsable_id": 1,
+                "entreprise_id": 1,
+                "contact_id": None
             }
         )
 
         create_response = client.post(
             "/api/projects",
             json={
-                "name": name_b,
+                "numero": f"PROJ-UPD-DUP-B-{uuid.uuid4().hex[:8]}",
+                "nom": name_b,
                 "description": "Second project",
-                "start_date": str(today),
-                "end_date": str(today + timedelta(days=365)),
-                "budget": 100000.0,
-                "comment": None,
-                "manager_id": 1
+                "date_debut": str(today),
+                "date_echeance": str(today + timedelta(days=365)),
+                "type": "INTERNE",
+                "stade": "En cours",
+                "commentaire": None,
+                "heures_planifiees": 100.0,
+                "heures_reelles": 0.0,
+                "est_template": False,
+                "projet_template_id": None,
+                "responsable_id": 1,
+                "entreprise_id": 1,
+                "contact_id": None
             }
         )
         project_b_id = create_response.json()["id"]
@@ -149,37 +183,45 @@ class TestUpdateProjectEndpoint:
         # Act: Try to rename Project B to Project A (conflict)
         response = client.put(
             f"/api/projects/{project_b_id}",
-            json={"name": name_a}
+            json={"nom": name_a}
         )
 
         # Assert
         assert response.status_code == 409
         assert name_a in response.json()["detail"]
 
-    def test_update_project_invalid_budget_returns_422(self, client: TestClient, unique_name: str):
-        """Test updating with invalid budget returns 422."""
+    def test_update_project_invalid_heures_returns_422(self, client: TestClient, unique_name: str):
+        """Test updating with invalid heures_planifiees returns 422."""
         # Arrange: Create a project
         today = date.today()
-        name = f"{unique_name}-budget"
+        name = f"{unique_name}-heures"
 
         create_response = client.post(
             "/api/projects",
             json={
-                "name": name,
+                "numero": f"PROJ-UPD-HEURES-{uuid.uuid4().hex[:8]}",
+                "nom": name,
                 "description": "Test",
-                "start_date": str(today),
-                "end_date": str(today + timedelta(days=365)),
-                "budget": 100000.0,
-                "comment": None,
-                "manager_id": 1
+                "date_debut": str(today),
+                "date_echeance": str(today + timedelta(days=365)),
+                "type": "INTERNE",
+                "stade": "En cours",
+                "commentaire": None,
+                "heures_planifiees": 100.0,
+                "heures_reelles": 0.0,
+                "est_template": False,
+                "projet_template_id": None,
+                "responsable_id": 1,
+                "entreprise_id": 1,
+                "contact_id": None
             }
         )
         project_id = create_response.json()["id"]
 
-        # Act: Try to update with negative budget
+        # Act: Try to update with negative heures_planifiees
         response = client.put(
             f"/api/projects/{project_id}",
-            json={"budget": -1000.0}
+            json={"heures_planifiees": -100.0}
         )
 
         # Assert
@@ -196,13 +238,21 @@ class TestDeleteProjectEndpoint:
         create_response = client.post(
             "/api/projects",
             json={
-                "name": "Project to Delete",
+                "numero": f"PROJ-DEL-{uuid.uuid4().hex[:8]}",
+                "nom": "Project to Delete",
                 "description": "Will be deleted",
-                "start_date": str(today),
-                "end_date": str(today + timedelta(days=365)),
-                "budget": 100000.0,
-                "comment": None,
-                "manager_id": 1
+                "date_debut": str(today),
+                "date_echeance": str(today + timedelta(days=365)),
+                "type": "INTERNE",
+                "stade": "En cours",
+                "commentaire": None,
+                "heures_planifiees": 100.0,
+                "heures_reelles": 0.0,
+                "est_template": False,
+                "projet_template_id": None,
+                "responsable_id": 1,
+                "entreprise_id": 1,
+                "contact_id": None
             }
         )
         assert create_response.status_code == 201
@@ -255,13 +305,21 @@ class TestListProjectsEndpoint:
             response = client.post(
                 "/api/projects",
                 json={
-                    "name": name,
+                    "numero": f"PROJ-LIST-{uuid.uuid4().hex[:8]}",
+                    "nom": name,
                     "description": f"Description {i+1}",
-                    "start_date": str(today),
-                    "end_date": str(today + timedelta(days=365)),
-                    "budget": 100000.0 * (i + 1),
-                    "comment": None,
-                    "manager_id": 1
+                    "date_debut": str(today),
+                    "date_echeance": str(today + timedelta(days=365)),
+                    "type": "INTERNE",
+                    "stade": "En cours",
+                    "commentaire": None,
+                    "heures_planifiees": 100.0 * (i + 1),
+                    "heures_reelles": 0.0,
+                    "est_template": False,
+                    "projet_template_id": None,
+                    "responsable_id": 1,
+                    "entreprise_id": 1,
+                    "contact_id": None
                 }
             )
             assert response.status_code == 201
@@ -274,7 +332,7 @@ class TestListProjectsEndpoint:
         data = response.json()
         assert len(data) >= initial_count + 3  # At least the initial + 3 we created
         # Check that our created projects are in the list
-        response_names = [p["name"] for p in data]
+        response_names = [p["nom"] for p in data]
         for name in created_names:
             assert name in response_names
 
@@ -286,13 +344,21 @@ class TestListProjectsEndpoint:
             response = client.post(
                 "/api/projects",
                 json={
-                    "name": f"{unique_name}-limit-{i+1}",
+                    "numero": f"PROJ-LIMIT-{uuid.uuid4().hex[:8]}",
+                    "nom": f"{unique_name}-limit-{i+1}",
                     "description": f"Description {i+1}",
-                    "start_date": str(today),
-                    "end_date": str(today + timedelta(days=365)),
-                    "budget": 100000.0,
-                    "comment": None,
-                    "manager_id": 1
+                    "date_debut": str(today),
+                    "date_echeance": str(today + timedelta(days=365)),
+                    "type": "INTERNE",
+                    "stade": "En cours",
+                    "commentaire": None,
+                    "heures_planifiees": 100.0,
+                    "heures_reelles": 0.0,
+                    "est_template": False,
+                    "projet_template_id": None,
+                    "responsable_id": 1,
+                    "entreprise_id": 1,
+                    "contact_id": None
                 }
             )
             assert response.status_code == 201
@@ -317,13 +383,21 @@ class TestListProjectsEndpoint:
             response = client.post(
                 "/api/projects",
                 json={
-                    "name": f"{unique_name}-offset-{i+1}",
+                    "numero": f"PROJ-OFFSET-{uuid.uuid4().hex[:8]}",
+                    "nom": f"{unique_name}-offset-{i+1}",
                     "description": f"Description {i+1}",
-                    "start_date": str(today),
-                    "end_date": str(today + timedelta(days=365)),
-                    "budget": 100000.0,
-                    "comment": None,
-                    "manager_id": 1
+                    "date_debut": str(today),
+                    "date_echeance": str(today + timedelta(days=365)),
+                    "type": "INTERNE",
+                    "stade": "En cours",
+                    "commentaire": None,
+                    "heures_planifiees": 100.0,
+                    "heures_reelles": 0.0,
+                    "est_template": False,
+                    "projet_template_id": None,
+                    "responsable_id": 1,
+                    "entreprise_id": 1,
+                    "contact_id": None
                 }
             )
             assert response.status_code == 201
@@ -351,13 +425,21 @@ class TestListProjectsEndpoint:
             response = client.post(
                 "/api/projects",
                 json={
-                    "name": name,
+                    "numero": f"PROJ-BOTH-{uuid.uuid4().hex[:8]}",
+                    "nom": name,
                     "description": f"Description {i+1}",
-                    "start_date": str(today),
-                    "end_date": str(today + timedelta(days=365)),
-                    "budget": 100000.0,
-                    "comment": None,
-                    "manager_id": 1
+                    "date_debut": str(today),
+                    "date_echeance": str(today + timedelta(days=365)),
+                    "type": "INTERNE",
+                    "stade": "En cours",
+                    "commentaire": None,
+                    "heures_planifiees": 100.0,
+                    "heures_reelles": 0.0,
+                    "est_template": False,
+                    "projet_template_id": None,
+                    "responsable_id": 1,
+                    "entreprise_id": 1,
+                    "contact_id": None
                 }
             )
             assert response.status_code == 201

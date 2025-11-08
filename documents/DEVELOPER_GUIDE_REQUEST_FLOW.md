@@ -241,6 +241,7 @@ class ProjectService:
 
 Avant de commencer, assurez-vous d'avoir:
 
+- [ ] **Lu la section [Conventions de Nommage](#conventions-de-nommage)** (Anglais pour le code, Français pour les commentaires)
 - [ ] Compris les règles métier de la fonctionnalité
 - [ ] Identifié l'entité du domaine concernée
 - [ ] Défini les cas d'usage (use cases)
@@ -249,12 +250,12 @@ Avant de commencer, assurez-vous d'avoir:
 
 **Ordre d'implémentation recommandé:**
 
-1. ✅ Entité du domaine
-2. ✅ Ports (interfaces)
-3. ✅ Service métier
-4. ✅ Adapter repository
-5. ✅ DTOs (schemas)
-6. ✅ Router FastAPI
+1. ✅ Entité du domaine (noms EN, docstrings FR)
+2. ✅ Ports (interfaces) (noms EN, docstrings FR)
+3. ✅ Service métier (noms EN, docstrings FR)
+4. ✅ Adapter repository (noms EN, docstrings FR)
+5. ✅ DTOs (schemas) (noms EN, docstrings FR)
+6. ✅ Router FastAPI (noms EN, docstrings FR)
 7. ✅ Tests (à chaque étape idéalement)
 
 ---
@@ -2399,6 +2400,8 @@ def get_task_service() -> TaskUseCasesPort:
 Avant de soumettre votre feature:
 
 ### Code
+- [ ] **Nommage en anglais** : Tous les fichiers, classes, méthodes, variables en anglais
+- [ ] **Commentaires en français** : Toutes les docstrings et commentaires en français
 - [ ] L'entité du domaine n'a aucune dépendance externe
 - [ ] Le service implémente le port primaire (interface)
 - [ ] Le service dépend du port secondaire (pas de l'implémentation)
@@ -2442,9 +2445,17 @@ Avant de soumettre votre feature:
 ## Commandes de Vérification
 
 ```bash
-# Vérifier que le domaine est pur
+# Vérifier que le domaine est pur (aucune dépendance externe)
 grep -r "from fastapi\|from sqlalchemy\|from pydantic" src/domain/
 # Résultat attendu: aucune ligne
+
+# Vérifier le nommage anglais dans le code source
+grep -rn "def calculer_\|class Service.*Projet\|Type.*Projet" src/
+# Résultat attendu: aucune ligne (utiliser calculate_, ProjectService, ProjectType)
+
+# Vérifier que les commentaires sont en français
+grep -rn '""".*Calculate\|# Get the\|# Create a' src/domain/ src/ports/
+# Résultat attendu: aucune ligne (les commentaires doivent être en français)
 
 # Vérifier les imports circulaires
 uv run python -c "from src.domain.services.votre_service import VotreService; print('OK')"
@@ -2488,6 +2499,10 @@ uv run black src/ --check
 
 ---
 
-**Version:** 1.0
-**Dernière mise à jour:** 2025-11-07
+**Version:** 1.1
+**Dernière mise à jour:** 2025-11-08
 **Mainteneurs:** Équipe Architecture
+
+**Changelog:**
+- **v1.1 (2025-11-08)** : Ajout section "Conventions de Nommage" (Anglais/Français)
+- **v1.0 (2025-11-07)** : Première version du guide
